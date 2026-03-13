@@ -30,4 +30,3 @@ C -->|Result and Ask| A
 A -->|If OK| C
 
 C --> G[Automater]
----
