@@ -1,0 +1,36 @@
+[project]
+name = "iris"
+version = "0.1.0"
+description = "Intelligent Reasoning & Inferential Simulator"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "anthropic",
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "pydantic-settings",
+    "pandas",
+    "numpy",
+    "yfinance",
+    "alpaca-trade-api",
+    "arch",
+    "hmmlearn",
+    "scipy",
+    "pykalman",
+    "statsmodels",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "httpx",
+]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
