@@ -104,8 +104,8 @@ class KalmanHedgeFilter:
         spr = self.spread(x, y)
         z = np.zeros(len(spr))
         for i in range(window, len(spr)):
-        	sl = spr[i - window:i]
-        	std = np.std(sl)
-        	if std > 0:
-        		z[i] = (spr[i] - np.mean(sl)) / std
+            sl = spr[i - window:i]
+            std = np.std(sl)
+            if std > 0:
+                z[i] = (spr[i] - np.mean(sl)) / std
         return z
