@@ -6,6 +6,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from typing import Optional
+from statsmodels.tsa.stattools import adfuller
+import statsmodels.api as sm
 
 
 def cointegration_test(
@@ -24,8 +26,6 @@ def cointegration_test(
         hedge_ratio  : float (OLS beta)
         spread       : np.ndarray (residual series)
     """
-    from statsmodels.tsa.stattools import adfuller
-    import statsmodels.api as sm
 
     y = np.asarray(y, dtype=float)
     x = np.asarray(x, dtype=float)

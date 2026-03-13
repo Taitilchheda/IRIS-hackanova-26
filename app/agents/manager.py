@@ -28,6 +28,8 @@ from app.agents.expert.fixed_income import FixedIncomeAgent
 from app.agents.expert.microstructure import MicrostructureAgent
 from app.utils.logger import get_logger, new_run_id
 
+import anthropic
+
 log = get_logger(__name__)
 
 MAX_RETRIES = 2
@@ -50,7 +52,6 @@ def _load_prompt(name: str) -> str:
 
 def _call_llm(system: str, user: str) -> str:
     try:
-        import anthropic
         key = os.getenv("ANTHROPIC_API_KEY", "")
         if not key:
             return ""
