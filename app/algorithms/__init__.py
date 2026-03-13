@@ -5,20 +5,26 @@ from app.algorithms.alpha.kalman_filter import KalmanHedgeFilter
 from app.algorithms.alpha.pairs_trading import cointegration_test, spread_zscore
 
 # Fixed income algorithms
-from app.algorithms.fixed_income.duration_convexity import DurationConvexityCalculator
+from app.algorithms.fixed_income.duration_convexity import (
+    price_from_yield, 
+    modified_duration, 
+    dv01,
+    convexity, 
+    bond_price_change
+)
 from app.algorithms.fixed_income.short_rate_models import VasicekModel, CIRModel
 
 # Microstructure algorithms
-from app.algorithms.microstructure.hmm import HiddenMarkovModel
-from app.algorithms.microstructure.vwap_twap import VWAPCalculator, TWAPCalculator
+from app.algorithms.microstructure.hmm import RegimeHMM
+from app.algorithms.microstructure.vwap_twap import vwap, twap, execution_schedule, arrival_cost
 
 # Portfolio construction algorithms
-from app.algorithms.portfolio.mean_variance import MeanVarianceOptimizer, efficient_frontier, max_sharpe_weights
-from app.algorithms.portfolio.black_litterman import BlackLittermanModel, black_litterman_weights
+from app.algorithms.portfolio.mean_variance import efficient_frontier, max_sharpe_weights, min_variance_weights
+from app.algorithms.portfolio.black_litterman import market_implied_returns, black_litterman_returns, black_litterman_weights
 
 # Pricing algorithms
-from app.algorithms.pricing.black_scholes import BlackScholesPricer
-from app.algorithms.pricing.binomial_tree import BinomialTreePricer
+from app.algorithms.pricing.black_scholes import bsm_price, bsm_greeks, implied_volatility
+from app.algorithms.pricing.binomial_tree import binomial_price
 
 # Risk management algorithms
 from app.algorithms.risk.garch import GARCHModel
@@ -31,25 +37,34 @@ __all__ = [
     "spread_zscore",
     
     # Fixed income algorithms
-    "DurationConvexityCalculator",
+    "price_from_yield",
+    "modified_duration",
+    "dv01", 
+    "convexity",
+    "bond_price_change",
     "VasicekModel", 
     "CIRModel",
     
     # Microstructure algorithms
-    "HiddenMarkovModel",
-    "VWAPCalculator",
-    "TWAPCalculator",
+    "RegimeHMM",
+    "vwap",
+    "twap",
+    "execution_schedule",
+    "arrival_cost",
     
     # Portfolio algorithms
-    "MeanVarianceOptimizer",
     "efficient_frontier",
     "max_sharpe_weights",
-    "BlackLittermanModel",
+    "min_variance_weights",
+    "market_implied_returns",
+    "black_litterman_returns",
     "black_litterman_weights",
     
     # Pricing algorithms
-    "BlackScholesPricer",
-    "BinomialTreePricer",
+    "bsm_price",
+    "bsm_greeks",
+    "implied_volatility",
+    "binomial_price",
     
     # Risk algorithms
     "GARCHModel",
