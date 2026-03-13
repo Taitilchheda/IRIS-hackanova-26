@@ -6,7 +6,7 @@ flowchart TD
 
 A[Trader / User] --> C[Manager / Orchestrator Agent]
 
-C --> D1[Backtest Agent]
+C --> D1[Trader strategy Agent]
 C --> D2[Risk Analysis Agent]
 C --> D3[Signal Research Agent]
 C --> D4[Portfolio Construction Agent]
