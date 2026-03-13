@@ -29,4 +29,4 @@ F --> C
 C -->|Result and Ask| A
 A -->|If OK| C
 
-C -->|Flag| G[Automater]
+G[Automater] --> |Flag|C
