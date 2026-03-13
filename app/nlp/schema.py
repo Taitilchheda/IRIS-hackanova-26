@@ -47,6 +47,7 @@ class AgentResult(BaseModel):
     dates: List[str] = []
     trade_log: List[Dict[str, Any]] = []
     metrics: Dict[str, float] = {}
+    paths: List[List[float]] = []  # Supports Monte Carlo, Walk-forward, etc.
     error: Optional[str] = None
     elapsed_seconds: float = 0.0
 

@@ -31,6 +31,7 @@ export interface AgentResult {
     dates: string[]
     trade_log: Array<{ date: string; side: string; price: number; quantity: number; pnl_pct: number | null }>
     metrics: Record<string, number>
+    paths?: number[][]
     error: string | null
     elapsed_seconds: number
 }

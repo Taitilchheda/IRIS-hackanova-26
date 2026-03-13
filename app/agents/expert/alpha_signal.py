@@ -117,6 +117,7 @@ class AlphaSignalAgent(BaseExpertAgent):
                 equity_curve=equity,
                 dates=dates,
                 trade_log=trade_log,
+                paths=[hedge.tolist(), z.tolist()],  # Visualization: [Hedge Ratio, Z-Score]
                 metrics={"kalman_final_hedge": round(float(hedge[-1]), 4)},
                 elapsed_seconds=round(time.time() - t0, 2),
             )
