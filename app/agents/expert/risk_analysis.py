@@ -72,6 +72,11 @@ class RiskAnalysisAgent(BaseExpertAgent):
             equity_curve = [round(float(v), 2) for v in median_path[:n_days]]
             dates = [str(d.date()) for d in df.index[:n_days]]
 
+            # Sample paths for UI visualization
+            # Take 50 paths or total available, evenly spaced
+            stride = max(1, n_paths // 50)
+            sampled_paths = paths[::stride, :n_days].tolist()
+
             # Compute VaR/CVaR as extras
             final_values = paths[:, -1]
             var_95 = float(np.percentile(final_values, 5))
@@ -82,6 +87,7 @@ class RiskAnalysisAgent(BaseExpertAgent):
                 equity_curve=equity_curve,
                 dates=dates,
                 trade_log=[],
+                paths=sampled_paths,
                 metrics={
                     "garch_vol": round(sigma, 4),
                     "mu_annual": round(mu, 4),
