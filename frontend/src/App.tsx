@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useIRISStore } from './store/irisStore'
-import { runStrategy, type Tearsheet } from './api/client'
+import { runStrategy, automateStrategy, type Tearsheet } from './services/api'
 import './index.css'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -130,11 +130,13 @@ function drawVolumeSignalChart(canvas: HTMLCanvasElement, ts: Tearsheet | null) 
 
 export default function App() {
   const store = useIRISStore()
+  const [mainTab, setMainTab] = useState<'strategy' | 'portfolio' | 'risk' | 'signals' | 'execution'>('strategy')
   const [rTab, setRTab] = useState<RTab>('metrics')
   const [cTab, setCTab] = useState<CTab>('equity')
   const [showTrader, setShowTrader] = useState(true)
   const [showExpert, setShowExpert] = useState(true)
   const [showSpy, setShowSpy] = useState(true)
+   const [showDrawdownFill, setShowDrawdownFill] = useState(true)
 
   const mainCanvasRef = useRef<HTMLCanvasElement>(null)
   const ddCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -177,10 +179,90 @@ export default function App() {
       ctx.stroke()
     }
 
-    if (cTab === 'equity' || cTab === 'drawdown') {
+    if (cTab === 'equity') {
       if (showSpy) drawSeries(ts.benchmark_equity, '#2e4a60', true)
       if (showExpert) drawSeries(ts.expert.equity_curve, '#ffb800')
       if (showTrader) drawSeries(ts.trader.equity_curve, '#00ffe0')
+    } else if (cTab === 'drawdown') {
+      // Drawdown view: plot trader drawdown curve, optionally with filled area
+      if (showTrader && ts.trader.equity_curve.length > 1) {
+        const eq = ts.trader.equity_curve
+        const peaks: number[] = []
+        let peak = eq[0]
+        for (let i = 0; i < eq.length; i++) {
+          if (eq[i] > peak) peak = eq[i]
+          peaks.push(peak)
+        }
+        const dd = eq.map((v, i) => (v - peaks[i]) / peaks[i]) // 0 to negative
+        const min = Math.min(...dd)
+        const max = 0
+        const range = (max - min) || 1
+        const pts = dd.map((v, i) => ({
+          x: pad.l + (i / (dd.length - 1)) * cw,
+          y: pad.t + ch - ((v - min) / range) * ch,
+        }))
+
+        if (showDrawdownFill) {
+          ctx.beginPath()
+          ctx.moveTo(pts[0].x, pad.t + ch)
+          pts.forEach(p => ctx.lineTo(p.x, p.y))
+          ctx.lineTo(pts[pts.length - 1].x, pad.t + ch)
+          ctx.closePath()
+          ctx.fillStyle = 'rgba(255,61,90,0.25)'
+          ctx.fill()
+        }
+
+        ctx.beginPath()
+        ctx.strokeStyle = '#ff3d5a'
+        ctx.lineWidth = 1.5
+        pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y))
+        ctx.stroke()
+      }
+      // Optional: faint benchmark/expert drawdowns for context
+      if (showSpy && ts.benchmark_equity.length > 1) {
+        const eq = ts.benchmark_equity
+        const peaks: number[] = []
+        let peak = eq[0]
+        for (let i = 0; i < eq.length; i++) {
+          if (eq[i] > peak) peak = eq[i]
+          peaks.push(peak)
+        }
+        const dd = eq.map((v, i) => (v - peaks[i]) / peaks[i])
+        const min = Math.min(...dd)
+        const max = 0
+        const range = (max - min) || 1
+        ctx.beginPath()
+        ctx.strokeStyle = '#2e4a60'
+        ctx.setLineDash([3, 3])
+        dd.forEach((v, i) => {
+          const x = pad.l + (i / (dd.length - 1)) * cw
+          const y = pad.t + ch - ((v - min) / range) * ch
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        })
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
+      if (showExpert && ts.expert.equity_curve.length > 1) {
+        const eq = ts.expert.equity_curve
+        const peaks: number[] = []
+        let peak = eq[0]
+        for (let i = 0; i < eq.length; i++) {
+          if (eq[i] > peak) peak = eq[i]
+          peaks.push(peak)
+        }
+        const dd = eq.map((v, i) => (v - peaks[i]) / peaks[i])
+        const min = Math.min(...dd)
+        const max = 0
+        const range = (max - min) || 1
+        ctx.beginPath()
+        ctx.strokeStyle = '#ffb800'
+        dd.forEach((v, i) => {
+          const x = pad.l + (i / (dd.length - 1)) * cw
+          const y = pad.t + ch - ((v - min) / range) * ch
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        })
+        ctx.stroke()
+      }
     } else if (cTab === 'montecarlo' && ts.expert.paths) {
       ts.expert.paths.forEach((path, i) => {
         ctx.beginPath(); ctx.strokeStyle = `rgba(0, 255, 224, ${0.05 + (i % 5) * 0.02})`; ctx.lineWidth = 0.8; ctx.setLineDash([])
@@ -224,24 +306,43 @@ export default function App() {
   }, [ts])
 
   async function handleRun() {
-    store.setRunning(true); store.setError(null); store.setTearsheet(null); store.resetAgents()
+    store.setRunning(true)
+    store.setError(null)
+    store.setTearsheet(null)
+    store.resetAgents()
+
+    // Reflect agent pipeline phases on the UI
+    const phases = ['Manager Agent', 'Trader Strategy', 'Expert Agent', 'Verifier', 'Comparator'] as const
+    phases.forEach((name, idx) => {
+      store.setAgentStatus(name, idx === 0 ? 'running' : 'idle')
+    })
+
     try {
       const result = await runStrategy({
-        prompt: store.prompt, asset: store.asset,
-        start_date: store.startDate, end_date: store.endDate,
+        prompt: store.prompt,
+        asset: store.asset,
+        start_date: store.startDate,
+        end_date: store.endDate,
         initial_capital: store.capital,
         monte_carlo_paths: store.mcPaths,
         expert_type: store.expertType,
         commission_bps: store.commissionBps,
         slippage_bps: store.slippageBps,
-        max_position_pct: store.maxPositionPct / 100
+        max_position_pct: store.maxPositionPct / 100,
       })
+
+      // Mark all agents as completed on success
+      phases.forEach((name) => {
+        store.setAgentStatus(name, 'done')
+      })
+
       store.setTearsheet(result)
-      const mockAgents = ['Manager Agent', 'Trader Strategy', 'Risk Analysis', 'Verifier', 'Comparator']
-      mockAgents.forEach(a => store.setAgentStatus(a, 'done', 0.5))
     } catch (e: unknown) {
-      const err = e as Error;
-      store.setError(err.message || 'Pipeline error');
+      const err = e as Error
+      store.setError(err.message || 'Pipeline error')
+      phases.forEach((name) => {
+        store.setAgentStatus(name, 'error')
+      })
     } finally {
       store.setRunning(false)
     }
@@ -265,11 +366,11 @@ export default function App() {
       <div id="topbar">
         <div className="tb-logo"><div className="tb-logo-pulse"></div>IRIS</div>
         <div className="tb-tabs">
-          <div className="tb-tab active">STRATEGY LAB</div>
-          <div className="tb-tab">PORTFOLIO</div>
-          <div className="tb-tab">RISK DESK</div>
-          <div className="tb-tab">SIGNALS</div>
-          <div className="tb-tab">EXECUTION</div>
+          <div className={`tb-tab ${mainTab === 'strategy' ? 'active' : ''}`} onClick={() => setMainTab('strategy')}>STRATEGY LAB</div>
+          <div className={`tb-tab ${mainTab === 'portfolio' ? 'active' : ''}`} onClick={() => setMainTab('portfolio')}>PORTFOLIO</div>
+          <div className={`tb-tab ${mainTab === 'risk' ? 'active' : ''}`} onClick={() => setMainTab('risk')}>RISK DESK</div>
+          <div className={`tb-tab ${mainTab === 'signals' ? 'active' : ''}`} onClick={() => setMainTab('signals')}>SIGNALS</div>
+          <div className={`tb-tab ${mainTab === 'execution' ? 'active' : ''}`} onClick={() => setMainTab('execution')}>EXECUTION</div>
         </div>
         <div className="tb-right">
           <div className="tb-stat"><span className="tb-stat-label">{store.asset}</span><span className="tb-stat-val kv-up">$213.47</span></div>
@@ -278,11 +379,15 @@ export default function App() {
           <div className="tb-divider"></div>
           <div className="tb-stat"><span className="tb-stat-label">SPY</span><span className="tb-stat-val kv-up">+0.84%</span></div>
           <div className="tb-divider"></div>
+          <div className="tb-stat"><span className="tb-stat-label">USD/JPY</span><span className="tb-stat-val kv-nu">147.23</span></div>
+          <div className="tb-divider"></div>
           <div className="tb-badge">PAPER ACTIVE</div>
         </div>
       </div>
 
       <div id="main">
+        {mainTab === 'strategy' ? (
+        <>
         <div id="left">
           <div className="lp-section">
             <div className="section-hdr">STRATEGY INPUT <span className="section-hdr-btn" onClick={() => store.setPrompt('Buy AAPL when 50-day MA > 200-day MA.')}>EXAMPLE</span></div>
@@ -314,6 +419,15 @@ export default function App() {
 
             <div className="ctrl-row"><span className="ctrl-label">MC PATHS</span><span className="ctrl-val">{store.mcPaths}</span></div>
             <input type="range" min="100" max="2000" step="100" value={store.mcPaths} onChange={e => store.setMcPaths(+e.target.value)} />
+
+            <div className="ctrl-row"><span className="ctrl-label">LOOKBACK WINDOW (DAYS)</span><span className="ctrl-val">{store.lookbackWindow}</span></div>
+            <input type="range" min="50" max="1000" step="10" value={store.lookbackWindow} onChange={e => store.setLookbackWindow(+e.target.value)} />
+
+            <div className="ctrl-row"><span className="ctrl-label">STOP LOSS %</span><span className="ctrl-val">{store.stopLossPct}%</span></div>
+            <input type="range" min="1" max="50" step="1" value={store.stopLossPct} onChange={e => store.setStopLossPct(+e.target.value)} />
+
+            <div className="ctrl-row"><span className="ctrl-label">ROLLING WINDOW (DAYS)</span><span className="ctrl-val">{store.rollingWindow}</span></div>
+            <input type="range" min="10" max="365" step="5" value={store.rollingWindow} onChange={e => store.setRollingWindow(+e.target.value)} />
           </div>
 
           <div className="lp-section">
@@ -321,6 +435,7 @@ export default function App() {
             <div className="algo-list">
               {[
                 { id: 'risk_analysis', label: 'Risk Analysis', tag: 'Monte Carlo', cls: 'tag-risk' },
+                { id: 'portfolio', label: 'Portfolio Construction', tag: 'Black-Litterman', cls: 'tag-port' },
                 { id: 'alpha_signal', label: 'Alpha / Signal', tag: 'Kalman Filter', cls: 'tag-alpha' },
                 { id: 'derivatives', label: 'Derivatives', tag: 'Black-Scholes', cls: 'tag-deriv' },
                 { id: 'microstructure', label: 'Microstructure', tag: 'HMM + VWAP', cls: 'tag-port' },
@@ -364,6 +479,7 @@ export default function App() {
               <div className={`ct-toggle ${showTrader ? 'on' : ''}`} onClick={() => setShowTrader(!showTrader)}>TRADER</div>
               <div className={`ct-toggle ${showExpert ? 'on' : ''}`} onClick={() => setShowExpert(!showExpert)}>EXPERT</div>
               <div className={`ct-toggle ${showSpy ? 'on' : ''}`} onClick={() => setShowSpy(!showSpy)}>SPY</div>
+              <div className={`ct-toggle ${showDrawdownFill ? 'on' : ''}`} onClick={() => setShowDrawdownFill(!showDrawdownFill)}>DRAWDOWN FILL</div>
             </div>
           </div>
           <div id="charts-area">
@@ -523,10 +639,6 @@ export default function App() {
                   <span><span style={{ color: 'var(--amber)' }}>█</span> HIGH VOL</span>
                   <span><span style={{ color: 'var(--text3)' }}>█</span> NEUTRAL</span>
                 </div>
-
-                <div className="sub-hdr">ROLLING SHARPE (90-DAY)</div>
-                <div id="rolling-canvas-wrap"><canvas ref={rollingRightRef} /></div>
-
                 <div className="sub-hdr">FACTOR EXPOSURE</div>
                 <div className="risk-bar-row"><div className="risk-bar-label">Market</div><div className="risk-bar-track"><div className="risk-bar-fill" style={{ width: '65%', background: 'var(--blue)' }}></div></div><div className="risk-bar-val">+0.64</div></div>
                 <div className="risk-bar-row"><div className="risk-bar-label">Size SMB</div><div className="risk-bar-track"><div className="risk-bar-fill" style={{ width: '30%', background: 'var(--teal)' }}></div></div><div className="risk-bar-val">+0.28</div></div>
@@ -604,13 +716,64 @@ export default function App() {
                 <button style={{ width: '100%', padding: '6px', background: 'var(--elevated)', border: '1px solid var(--teal2)', color: 'var(--teal)', fontFamily: 'var(--mono)', fontSize: '9px', cursor: 'pointer', letterSpacing: '.06em' }}>ITERATE ↗</button>
                 <div className="sub-hdr" style={{ marginTop: '12px' }}>DEPLOY</div>
                 <div className="auto-btns">
-                  <button className="auto-btn auto-btn-primary" onClick={() => alert('Strategy deployed to paper trading')}>AUTOMATE MINE</button>
-                  <button className="auto-btn auto-btn-secondary" onClick={() => alert('Expert strategy deployed to paper trading')}>AUTOMATE EXPERT</button>
+                  <button
+                    className="auto-btn auto-btn-primary"
+                    disabled={!ts}
+                    onClick={async () => {
+                      if (!ts) return
+                      try {
+                        store.setError(null)
+                        await automateStrategy(ts.run_id, false)
+                        // Surface success inline for now; can later be replaced with a toast/modal
+                        alert('Strategy sent to Automator for paper deployment.')
+                      } catch (e: unknown) {
+                        const err = e as Error
+                        store.setError(err.message || 'Automator error')
+                      }
+                    }}
+                  >
+                    AUTOMATE MINE
+                  </button>
+                  <button
+                    className="auto-btn auto-btn-secondary"
+                    disabled={!ts}
+                    onClick={async () => {
+                      if (!ts) return
+                      try {
+                        store.setError(null)
+                        await automateStrategy(ts.run_id, true)
+                        alert('Expert strategy sent to Automator for paper deployment.')
+                      } catch (e: unknown) {
+                        const err = e as Error
+                        store.setError(err.message || 'Automator error')
+                      }
+                    }}
+                  >
+                    AUTOMATE EXPERT
+                  </button>
                 </div>
               </>
             )}
           </div>
         </div>
+        </>
+        ) : (
+          <div style={{ gridColumn: '1 / span 3', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px', gap: '12px', textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', letterSpacing: '.18em', color: 'var(--text3)' }}>
+              {mainTab === 'portfolio' && 'PORTFOLIO CONSTRUCTION'}
+              {mainTab === 'risk' && 'RISK DESK'}
+              {mainTab === 'signals' && 'SIGNAL RESEARCH'}
+              {mainTab === 'execution' && 'EXECUTION & MICROSTRUCTURE'}
+            </div>
+            <div style={{ fontSize: '18px', fontFamily: 'var(--sans)', color: 'var(--text)' }}>
+              Coming soon in this build.
+            </div>
+            <div style={{ fontSize: '10px', color: 'var(--text2)', maxWidth: 480, lineHeight: 1.6 }}>
+              This section will host dedicated tools and dashboards for the selected desk. For now,
+              use the Strategy Lab to design and backtest strategies end‑to‑end.
+            </div>
+          </div>
+        )}
       </div>
     </>
   )

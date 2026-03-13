@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Tearsheet } from '../api/client'
+import type { Tearsheet } from '../services/api'
 
 interface IRISStore {
     // Input
@@ -12,6 +12,9 @@ interface IRISStore {
     slippageBps: number
     maxPositionPct: number
     mcPaths: number
+    lookbackWindow: number
+    stopLossPct: number
+    rollingWindow: number
     expertType: string
 
     // Run state
@@ -32,6 +35,9 @@ interface IRISStore {
     setSlippageBps: (s: number) => void
     setMaxPositionPct: (m: number) => void
     setMcPaths: (n: number) => void
+    setLookbackWindow: (n: number) => void
+    setStopLossPct: (n: number) => void
+    setRollingWindow: (n: number) => void
     setExpertType: (t: string) => void
     setRunning: (r: boolean) => void
     setError: (e: string | null) => void
@@ -52,6 +58,9 @@ export const useIRISStore = create<IRISStore>((set) => ({
     slippageBps: 5,
     maxPositionPct: 100,
     mcPaths: 1000,
+    lookbackWindow: 252,
+    stopLossPct: 5,
+    rollingWindow: 90,
     expertType: 'risk_analysis',
     isRunning: false,
     error: null,
@@ -67,6 +76,9 @@ export const useIRISStore = create<IRISStore>((set) => ({
     setSlippageBps: (s) => set({ slippageBps: s }),
     setMaxPositionPct: (m) => set({ maxPositionPct: m }),
     setMcPaths: (n) => set({ mcPaths: n }),
+    setLookbackWindow: (n) => set({ lookbackWindow: n }),
+    setStopLossPct: (n) => set({ stopLossPct: n }),
+    setRollingWindow: (n) => set({ rollingWindow: n }),
     setExpertType: (t) => set({ expertType: t }),
     setRunning: (r) => set({ isRunning: r }),
     setError: (e) => set({ error: e }),

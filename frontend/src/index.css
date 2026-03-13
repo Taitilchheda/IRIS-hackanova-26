@@ -48,10 +48,24 @@ body::after{
 .tb-badge{font-size:9px;padding:2px 8px;border-radius:2px;border:1px solid rgba(0,255,224,.25);color:var(--teal);letter-spacing:.08em;}
 
 /* ── MAIN LAYOUT ── */
-#main{flex:1;display:grid;grid-template-columns:280px 1fr 300px;grid-template-rows:1fr;overflow:hidden;}
+#main{
+  flex:1;
+  display:grid;
+  grid-template-columns:280px 1fr 300px;
+  grid-template-rows:1fr;
+  height:calc(100vh - 38px); /* full viewport minus topbar */
+  overflow:hidden;
+}
 
 /* ── LEFT PANEL ── */
-#left{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;background:var(--surface);}
+#left{
+  border-right:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  overflow-y:auto;
+  overflow-x:hidden;
+  background:var(--surface);
+}
 .lp-section{border-bottom:1px solid var(--border);padding:12px 14px;flex-shrink:0;}
 .section-hdr{font-size:9px;letter-spacing:.14em;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;}
 .section-hdr-btn{font-size:8px;padding:1px 6px;border:1px solid var(--border2);color:var(--text2);cursor:pointer;border-radius:1px;transition:.15s;}
@@ -126,12 +140,20 @@ input.ctrl-input:focus{border-color:var(--teal2);}
 .ch-row{display:flex;justify-content:space-between;gap:16px;margin-bottom:2px;}
 
 /* ── RIGHT PANEL ── */
-#right{border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;background:var(--surface);min-height:0;}
+#right{
+  border-left:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  overflow-y:auto;
+  overflow-x:hidden;
+  background:var(--surface);
+  min-height:0;
+}
 .rp-tabs{height:32px;display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
 .rp-tab{flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;letter-spacing:.1em;color:var(--text2);cursor:pointer;border-right:1px solid var(--border);transition:.15s;}
 .rp-tab:last-child{border-right:none;}
 .rp-tab.active{color:var(--teal);background:var(--teal-dim);}
-.rp-content{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px 14px 40px;}
+.rp-content{flex:1;padding:12px 14px 40px;}
 
 /* KPI grid */
 .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;}
