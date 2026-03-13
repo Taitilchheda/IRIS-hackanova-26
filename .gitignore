@@ -45,3 +45,4 @@ frontend/.nx/
 # Cache Data
 data/*_cache.parquet
 app/data/cache/*.parquet
+node_modules/
