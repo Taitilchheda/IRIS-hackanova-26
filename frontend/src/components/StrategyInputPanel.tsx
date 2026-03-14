@@ -1,6 +1,8 @@
-import { Play, ChevronDown } from 'lucide-react'
+import { useState } from 'react'
+import { Play, ChevronDown, Sparkles } from 'lucide-react'
 import { useIRISStore, EXPERT_OPTIONS } from '../store/irisStore'
 import type { ExpertType } from '../store/irisStore'
+import { parseStrategy } from '../api/client'
 
 const PLACEHOLDER_STRATEGIES = [
   'Buy when the 50-day MA crosses above the 200-day MA, sell when RSI exceeds 70...',
@@ -18,19 +20,70 @@ export default function StrategyInputPanel({ compact = false }: { compact?: bool
     runPipeline,
   } = useIRISStore()
 
+  const [parsing, setParsing] = useState(false)
+  const [parseError, setParseError] = useState<string | null>(null)
   const isRunning = appPhase === 'running'
   const placeholder = PLACEHOLDER_STRATEGIES[Math.floor(Date.now() / 60000) % PLACEHOLDER_STRATEGIES.length]
 
+  const handleAutofill = async () => {
+    if (!prompt.trim()) return
+    setParsing(true)
+    setParseError(null)
+    try {
+      const spec = await parseStrategy({
+        prompt,
+        asset,
+        start_date: startDate,
+        end_date: endDate,
+        initial_capital: capital,
+        commission_bps: commissionBps,
+        slippage_bps: slippageBps,
+        max_position_pct: maxPositionPct / 100,
+        monte_carlo_paths: 1000,
+      })
+      if (spec.asset) setAsset(spec.asset.toUpperCase())
+      if (spec.start_date) setStartDate(spec.start_date)
+      if (spec.end_date) setEndDate(spec.end_date)
+      if (spec.initial_capital) setCapital(spec.initial_capital)
+      if (spec.commission_pct !== undefined) setCommissionBps(Math.round(spec.commission_pct * 10000))
+      if (spec.slippage_pct !== undefined) setSlippageBps(Math.round(spec.slippage_pct * 10000))
+      if (spec.max_position_pct !== undefined) setMaxPositionPct(Math.round(spec.max_position_pct * 100))
+      if (spec.strategy_type) setExpertType(spec.strategy_type as ExpertType)
+    } catch (e: any) {
+      console.warn('Autofill parse failed', e)
+      const msg = (e && e.response && e.response.data && e.response.data.detail) || e?.message || 'Auto-fill failed'
+      setParseError(msg)
+    } finally {
+      setParsing(false)
+    }
+  }
+
+  const panelClass = compact ? 'strategy-panel compact' : 'strategy-panel'
+
   return (
-    <div className="strategy-panel" style={{ background: compact ? 'var(--panel)' : 'var(--bg-surface)', border: compact ? '1px solid var(--border2)' : '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
-      <div className="panel-header">
-        <h2 className="font-mono">Strategy Input</h2>
-        <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }} className="font-mono">
-          Describe your trading strategy in plain English
-        </span>
+    <div className={panelClass}>
+      <div className="panel-header" style={{ alignItems: 'flex-start' }}>
+        <div>
+          <h2 className="font-mono">Strategy Input</h2>
+          <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }} className="font-mono">
+            Describe your trading strategy in plain English
+          </span>
+        </div>
+        {!compact && (
+          <button
+            className="iris-btn iris-btn-secondary font-mono"
+            style={{ padding: '0.5rem 0.75rem', gap: '0.4rem' }}
+            onClick={handleAutofill}
+            disabled={isRunning || parsing || !prompt.trim()}
+            title="Parse prompt to pre-fill fields"
+          >
+            <Sparkles size={14} /> {parsing ? 'Parsing…' : 'Auto-fill'}
+          </button>
+        )}
       </div>
 
       {/* Strategy textarea */}
+      {parseError && (<div className="iris-card" style={{ borderColor: 'rgba(255,77,106,0.3)', background:'rgba(255,77,106,0.05)', padding:'0.5rem', fontSize:'0.78rem', color:'var(--red)', marginBottom:'0.35rem' }}>{parseError}</div>)}
       <textarea
         className="iris-input strategy-textarea font-mono"
         placeholder={placeholder}
@@ -39,6 +92,18 @@ export default function StrategyInputPanel({ compact = false }: { compact?: bool
         rows={4}
         disabled={isRunning}
       />
+
+      {!compact && (
+        <button
+          className="iris-btn iris-btn-secondary font-mono"
+          style={{ padding: '0.5rem 0.75rem', gap: '0.4rem', width: '100%' }}
+          onClick={handleAutofill}
+          disabled={isRunning || parsing || !prompt.trim()}
+          title="Parse prompt to pre-fill fields"
+        >
+          <Sparkles size={14} /> {parsing ? 'Parsing…' : 'Auto-fill'}
+        </button>
+      )}
 
       {/* Config grid */}
       <div className="config-grid">
@@ -179,21 +244,23 @@ export default function StrategyInputPanel({ compact = false }: { compact?: bool
           display: flex;
           flex-direction: column;
           gap: 1rem;
-          background: var(--panel);
+          background: radial-gradient(circle at 20% 20%, rgba(0,229,195,0.05), transparent 45%),
+                      radial-gradient(circle at 80% 0%, rgba(240,165,0,0.05), transparent 40%),
+                      var(--panel);
           border: 1px solid var(--border2);
           border-radius: 10px;
           padding: 14px;
-          box-shadow: 0 12px 32px rgba(0,0,0,0.25);
+          box-shadow: 0 12px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03);
         }
         .strategy-panel.compact {
-          padding: 12px;
-          border: 1px solid var(--border2);
           box-shadow: none;
+          background: var(--panel);
+          padding: 12px;
         }
         .panel-header {
           display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
+          justify-content: space-between;
+          gap: 0.75rem;
         }
         .panel-header h2 {
           font-size: 1rem;
@@ -205,10 +272,14 @@ export default function StrategyInputPanel({ compact = false }: { compact?: bool
           min-height: 100px;
           font-size: 0.875rem;
           line-height: 1.6;
+          background: var(--raised);
+          border: 1px solid var(--border2);
+          color: var(--text);
+          border-radius: 8px;
         }
         .config-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
           gap: 0.75rem;
         }
         .config-field-wide {
@@ -224,13 +295,8 @@ export default function StrategyInputPanel({ compact = false }: { compact?: bool
           margin-bottom: 0.375rem;
           font-family: var(--font-mono);
         }
-        .select-wrapper {
-          position: relative;
-        }
-        .select-wrapper select {
-          appearance: none;
-          padding-right: 2rem;
-        }
+        .select-wrapper { position: relative; }
+        .select-wrapper select { appearance: none; padding-right: 2rem; }
         .select-icon {
           position: absolute;
           right: 0.75rem;
@@ -244,6 +310,10 @@ export default function StrategyInputPanel({ compact = false }: { compact?: bool
           padding: 0.875rem;
           font-size: 0.9375rem;
           margin-top: 0.5rem;
+          background: linear-gradient(90deg, #00e5c3, #00bfa5);
+          color: var(--bg);
+          border: none;
+          box-shadow: 0 10px 24px rgba(0, 229, 195, 0.25);
         }
         .spinner {
           display: inline-block;
@@ -254,9 +324,7 @@ export default function StrategyInputPanel({ compact = false }: { compact?: bool
           border-radius: 50%;
           animation: spin 0.7s linear infinite;
         }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
         @media (max-width: 640px) {
           .config-grid {
             grid-template-columns: 1fr 1fr;

@@ -44,6 +44,13 @@ def load_ohlcv(ticker: str, start: str, end: str) -> pd.DataFrame:
                 return df
         except Exception as e:
             log.warning(f"Cache read failed: {e}")
+            # try csv fallback
+            try:
+                df = pd.read_csv(cache_file.with_suffix(".csv"), index_col=0, parse_dates=True)
+                if not df.empty:
+                    return df
+            except Exception:
+                pass
 
     try:
         import yfinance as yf
@@ -60,6 +67,10 @@ def load_ohlcv(ticker: str, start: str, end: str) -> pd.DataFrame:
             df.to_parquet(cache_file)
         except Exception as e:
             log.warning(f"Cache write failed: {e}")
+            try:
+                df.to_csv(cache_file.with_suffix(".csv"))
+            except Exception:
+                pass
         return df
     except Exception as e:
         log.warning(f"yfinance failed for {ticker}: {e}")
@@ -70,6 +81,10 @@ def load_ohlcv(ticker: str, start: str, end: str) -> pd.DataFrame:
             stq.to_parquet(cache_file)
         except Exception as e:
             log.warning(f"Cache write failed (stooq): {e}")
+            try:
+                stq.to_csv(cache_file.with_suffix(".csv"))
+            except Exception:
+                pass
         return stq
 
     if cache_file.exists():

@@ -6,8 +6,8 @@ import { Lock, Mail, LogIn, UserPlus } from 'lucide-react'
 export default function Login() {
   const { user, login, register, error, loading, hydrate } = useAuthStore()
   const [isSignup, setIsSignup] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState('admin@iris.local')
+  const [password, setPassword] = useState('ChangeMe123!')
   const navigate = useNavigate()
 
   useEffect(() => {

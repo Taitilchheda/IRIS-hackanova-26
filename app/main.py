@@ -5,7 +5,7 @@ from app.api.strategy import router as strategy_router
 from app.api.backtest import router as backtest_router
 from app.api.tearsheet import router as tearsheet_router
 from app.api.automator import router as automator_router
-from app.api.auth import router as auth_router, create_default_admin
+from app.api.auth import router as auth_router
 from app.db import init_db, get_session
 
 app = FastAPI(
@@ -26,8 +26,6 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup():
     init_db()
-    with get_session() as session:
-        create_default_admin(session)
 
 # ── API routes ───────────────────────────────────────────────────────────────
 app.include_router(auth_router)

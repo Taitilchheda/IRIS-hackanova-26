@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { login as apiLogin, register as apiRegister, me as apiMe } from '../api/client'
+import { login as apiLogin, me as apiMe } from '../api/client'
 
 interface AuthState {
   user: { email: string } | null
@@ -43,9 +43,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   register: async (email, password) => {
+    // Registration just validates the fixed admin creds via login
     set({ loading: true, error: null })
     try {
-      const token = await apiRegister(email, password)
+      const token = await apiLogin(email, password)
       localStorage.setItem('iris_token', token)
       const user = await apiMe()
       set({ user, token, loading: false })

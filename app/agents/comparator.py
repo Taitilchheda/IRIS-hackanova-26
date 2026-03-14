@@ -4,10 +4,9 @@ Comparator Agent — aligns equity curves, computes metrics, builds Tearsheet.
 from __future__ import annotations
 import pandas as pd
 import numpy as np
-from app.nlp.schema import AgentResult, StrategySpec, Tearsheet, TearsheetMetrics
-from app.tearsheet.metrics import compute_metrics
+from app.nlp.schema import AgentResult, StrategySpec, Tearsheet
+from app.tearsheet.builder import build_tearsheet
 from app.data.loader import load_ohlcv
-from app.utils.dates import years_between
 from app.utils.logger import get_logger
 
 log = get_logger(__name__)
@@ -30,13 +29,9 @@ class ComparatorAgent:
     def compare(self, trader: AgentResult, expert: AgentResult,
                 spec: StrategySpec, run_id: str) -> Tearsheet:
         log.info(f"[{self.name}] Comparing trader vs expert")
-        years = years_between(spec.start_date, spec.end_date)
 
         # Use trader dates as canonical
         ref_dates = trader.dates if trader.dates else expert.dates
-
-        # Align expert curve to trader dates
-        expert_eq = _align_curves(expert.equity_curve, expert.dates, ref_dates)
 
         # Fetch SPY benchmark
         benchmark_equity = []
@@ -55,36 +50,6 @@ class ComparatorAgent:
             log.warning(f"Could not load SPY benchmark: {e}")
             benchmark_equity = [spec.initial_capital] * len(ref_dates)
 
-        # Compute metrics
-        trader_metrics = compute_metrics(trader.equity_curve, trader.trade_log, years)
-        expert_metrics = compute_metrics(expert_eq, expert.trade_log, years)
-        bench_metrics = compute_metrics(benchmark_equity, [], years)
+        tearsheet = build_tearsheet(trader, expert, spec, run_id, benchmark_equity=benchmark_equity)
 
-        log.info(f"[{self.name}] Trader Sharpe={trader_metrics.sharpe}, "
-                 f"Expert Sharpe={expert_metrics.sharpe}")
-
-        return Tearsheet(
-            run_id=run_id,
-            strategy_spec=spec,
-            trader=AgentResult(
-                agent_name=trader.agent_name,
-                equity_curve=trader.equity_curve,
-                dates=ref_dates,
-                trade_log=trader.trade_log,
-                metrics=trader.metrics,
-                elapsed_seconds=trader.elapsed_seconds,
-            ),
-            expert=AgentResult(
-                agent_name=expert.agent_name,
-                equity_curve=expert_eq,
-                dates=ref_dates,
-                trade_log=expert.trade_log,
-                metrics=expert.metrics,
-                elapsed_seconds=expert.elapsed_seconds,
-            ),
-            trader_metrics=trader_metrics,
-            expert_metrics=expert_metrics,
-            benchmark_equity=benchmark_equity,
-            benchmark_metrics=bench_metrics,
-            expert_type=expert.agent_name,
-        )
+        return tearsheet

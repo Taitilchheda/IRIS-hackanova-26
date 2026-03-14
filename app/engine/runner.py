@@ -77,14 +77,18 @@ def _eval_condition(close: pd.Series, high: pd.Series, low: pd.Series,
                                  cond.value["indicator"],
                                  cond.value.get("params", {}))
     else:
-        rhs = float(cond.value)
+        rhs = cond.value
 
     op = cond.operator
     try:
         l_val = float(lhs.iloc[idx])
-        r_val = float(rhs.iloc[idx]) if isinstance(rhs, pd.Series) else float(rhs)
+        if isinstance(rhs, pd.Series):
+            r_val = float(rhs.iloc[idx])
+            r_prev = float(rhs.iloc[idx - 1]) if idx > 0 else r_val
+        else:
+            r_val = float(rhs)
+            r_prev = r_val
         l_prev = float(lhs.iloc[idx - 1]) if idx > 0 else l_val
-        r_prev = float(rhs.iloc[idx - 1]) if isinstance(rhs, pd.Series) and idx > 0 else r_val
 
         if op == ">":
             return l_val > r_val

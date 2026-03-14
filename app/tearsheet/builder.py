@@ -81,6 +81,8 @@ def build_tearsheet(
             dates=ref_dates,
             trade_log=trader.trade_log,
             metrics=trader.metrics,
+            paths=getattr(trader, 'paths', []),
+            error=getattr(trader, 'error', None),
             elapsed_seconds=trader.elapsed_seconds,
         ),
         expert=AgentResult(
@@ -89,6 +91,8 @@ def build_tearsheet(
             dates=ref_dates,
             trade_log=expert.trade_log,
             metrics=expert.metrics,
+            paths=getattr(expert, 'paths', []),
+            error=getattr(expert, 'error', None),
             elapsed_seconds=expert.elapsed_seconds,
         ),
         trader_metrics=trader_m,

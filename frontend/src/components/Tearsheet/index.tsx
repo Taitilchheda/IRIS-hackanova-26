@@ -4,6 +4,9 @@ import MetricsGrid from './MetricsGrid'
 import ComparisonTable from './ComparisonTable'
 import IrisSaysPanel from './IrisSaysPanel'
 import { useIRISStore } from '../../store/irisStore'
+import DrawdownChart from './DrawdownChart'
+import RollingSharpe from './RollingSharpe'
+import PnLWaterfall from './PnLWaterfall'
 
 export default function TearsheetLayout() {
   const tearsheet = useIRISStore((s) => s.tearsheet)
@@ -69,6 +72,15 @@ export default function TearsheetLayout() {
         <div className="tearsheet-metrics">
           <MetricsGrid />
         </div>
+      </div>
+
+      {/* Additional charts */}
+      <div className="grid-2">
+        <DrawdownChart />
+        <RollingSharpe />
+      </div>
+      <div className="grid-2">
+        <PnLWaterfall />
       </div>
 
       {/* Comparison table */}
