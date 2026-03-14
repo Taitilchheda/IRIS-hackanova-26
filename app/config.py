@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # Server configuration
     port: int = 8000
     log_level: str = "INFO"
-    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000", "http://localhost:5174"]
 
     # Database
     db_url: str = "sqlite:///./iris.db"

@@ -24,6 +24,7 @@ wheels/
 # Virtual Environment
 venv/
 ENV/
+venv_new/
 
 # Env vars
 .env
