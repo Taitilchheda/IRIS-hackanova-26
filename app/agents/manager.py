@@ -50,52 +50,7 @@ def _load_prompt(name: str) -> str:
     return (PROMPT_DIR / name).read_text(encoding="utf-8")
 
 
-def _call_llm(system: str, user: str) -> str:
-    """Try Anthropic first, then OpenRouter (OpenAI-compatible), else return ''."""
-    # Anthropic
-    if settings.anthropic_api_key:
-        try:
-            import anthropic
-            client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-            msg = client.messages.create(
-                model="claude-3-5-haiku-20241022",
-                max_tokens=400,
-                system=system,
-                messages=[{"role": "user", "content": user}],
-            )
-            return msg.content[0].text.strip()
-        except Exception as e:
-            log.warning(f"LLM narrative via Anthropic failed: {e}")
-
-    # OpenRouter (free-tier friendly; choose model via env)
-    if settings.openrouter_api_key:
-        try:
-            headers = {
-                "Authorization": f"Bearer {settings.openrouter_api_key}",
-                "Content-Type": "application/json",
-            }
-            payload = {
-                "model": settings.openrouter_model or "gpt-3.5-turbo",
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user},
-                ],
-                "max_tokens": 400,
-                "temperature": 0.3,
-            }
-            resp = httpx.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                json=payload,
-                headers=headers,
-                timeout=20.0,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            return data["choices"][0]["message"]["content"].strip()
-        except Exception as e:
-            log.warning(f"LLM narrative via OpenRouter failed: {e}")
-
-    return ""
+from app.utils.llm import _call_llm
 
 
 class ManagerAgent:
@@ -115,6 +70,7 @@ class ManagerAgent:
         commission_bps: float = 10.0,
         slippage_bps: float = 5.0,
         max_position_pct: float = 1.0,
+        monte_carlo_paths: int = 1000,
         expert_type: str | None = None,
     ) -> Tearsheet:
         run_id = new_run_id()
@@ -131,6 +87,7 @@ class ManagerAgent:
             commission_pct=commission_bps / 10000,
             slippage_pct=slippage_bps / 10000,
             max_position_pct=max_position_pct,
+            monte_carlo_paths=monte_carlo_paths,
         )
 
         # Override expert type if specified

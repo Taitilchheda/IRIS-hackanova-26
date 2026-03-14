@@ -14,6 +14,24 @@ from app.utils.logger import get_logger
 
 log = get_logger(__name__)
 
+
+def _simulate_gbm_paths(initial_capital: float, returns: np.ndarray, 
+                         n_days: int, n_paths: int, seed: int = 42) -> np.ndarray:
+    """Simulate GBM paths based on historical return distribution."""
+    rng = np.random.default_rng(seed)
+    mu = np.mean(returns)
+    sigma = np.std(returns)
+    dt = 1
+    drift = (mu - 0.5 * sigma**2) * dt
+    vol = sigma * np.sqrt(dt)
+    z = rng.standard_normal((n_paths, n_days))
+    log_returns = drift + vol * z
+    paths = initial_capital * np.exp(np.cumsum(log_returns, axis=1))
+    paths_with_initial = np.zeros((n_paths, n_days + 1))
+    paths_with_initial[:, 0] = initial_capital
+    paths_with_initial[:, 1:] = paths
+    return paths_with_initial
+
 # Diversified basket of assets to build portfolio
 BASKET = ["SPY", "QQQ", "GLD", "TLT", "IEF"]
 
@@ -74,11 +92,20 @@ class PortfolioAgent(BaseExpertAgent):
                 equity.append(round(capital, 2))
             equity = equity[1:]  # align with dates
 
+            # Generate Monte Carlo paths
+            mc_paths = _simulate_gbm_paths(
+                initial_capital=spec.initial_capital,
+                returns=port_returns,
+                n_days=len(equity) - 1,
+                n_paths=100
+            )
+
             return AgentResult(
                 agent_name=self.name,
                 equity_curve=equity,
                 dates=dates,
                 trade_log=[],
+                paths=mc_paths.tolist(),
                 metrics={f"w_{t}": round(float(w), 4) for t, w in zip(tickers, weights)},
                 elapsed_seconds=round(time.time() - t0, 2),
             )

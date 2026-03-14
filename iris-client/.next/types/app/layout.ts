@@ -1,4 +1,4 @@
-// File: C:\Users\asaad\Documents\IRIS-hackanova-26\iris-client\src\app\layout.tsx
+// File: E:\hackathons\hackanova 2026\IRIS-hackanova-26\iris-client\src\app\layout.tsx
 import * as entry from '../../../src/app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

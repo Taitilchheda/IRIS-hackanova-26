@@ -90,11 +90,21 @@ class DerivativesPricingAgent(BaseExpertAgent):
                         "price": round(S, 2), "quantity": 1, "pnl_pct": None
                     })
 
+            # Generate Monte Carlo paths
+            from app.agents.expert.alpha_signal import _simulate_gbm_paths
+            mc_paths = _simulate_gbm_paths(
+                initial_capital=spec.initial_capital,
+                returns=np.diff(equity) / equity[:-1],
+                n_days=len(equity) - 1,
+                n_paths=100
+            )
+
             return AgentResult(
                 agent_name=self.name,
                 equity_curve=equity,
                 dates=dates,
                 trade_log=trade_log,
+                paths=mc_paths.tolist(),
                 metrics={
                     "implied_vol_used": round(sigma_ann, 4),
                     "option_type": "ATM_call_delta_hedged",

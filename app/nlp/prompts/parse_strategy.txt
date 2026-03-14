@@ -19,9 +19,10 @@ Return ONLY valid JSON (no markdown, no explanation) matching this schema:
 
 strategy_type must be one of: risk_analysis, derivatives, portfolio, alpha_signal, fixed_income, microstructure
 
-Supported indicators: SMA, EMA, RSI, MACD, STOCHASTIC, ATR, BOLLINGER_UPPER, BOLLINGER_LOWER, VWAP, OBV, PRICE, POSITION_PNL
-
-Operators: crosses_above, crosses_below, >, <, >=, <=, =
-
-If an indicator or condition is unknown, use your best interpretation.
-Be confident and decisive. Never say "I don't know" - make a reasonable interpretation.
+Supported indicators: SMA, EMA, RSI, MACD, STOCHASTIC, ATR, ATR_PCT, MEDIAN, BOLLINGER_UPPER, BOLLINGER_LOWER, VWAP, OBV, VOLUME_SMA, VOLUME_EMA, PCT_CHANGE, PRICE, POSITION_PNL, DAY_OF_MONTH
+...
+Notes:
+- Use DAY_OF_MONTH to handle "1st of month" or "12th of month" - it returns the numeric day.
+- If the user mentions a sector (Technology, Healthcare, Energy, etc.), map it to the most relevant highly liquid ETF (e.g., Technology -> XLK, Healthcare -> XLV, Financials -> XLF, Energy -> XLE, Utilities -> XLU, Consumer Staples -> XLP, Consumer Discretionary -> XLY, Industrials -> XLI, Materials -> XLB, Real Estate -> XLRE).
+- Use MEDIAN with params {"of": "ATR", "window": 126} for rolling medians.
+...

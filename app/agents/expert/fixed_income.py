@@ -78,11 +78,27 @@ class FixedIncomeAgent(BaseExpertAgent):
             mod_dur = dur / (1 + ytm)
             dv01 = mod_dur * _bond_price(ytm) / 10000
 
+            # Generate Monte Carlo paths using multiple Vasicek rate paths
+            n_paths = 100
+            mc_paths = []
+            for j in range(n_paths):
+                path_rates = _vasicek_path(r0, a, b, sigma_r, n, seed=42 + j)
+                path_equity = [spec.initial_capital]
+                for k in range(1, n):
+                    b_p_t = _bond_price(path_rates[k])
+                    b_p_prev = _bond_price(path_rates[k-1])
+                    r_ret = (b_p_t - b_p_prev) / b_p_prev
+                    # Blend with a random walk centered on TLT return distribution for variety
+                    r_noise = np.random.normal(0, 0.002)
+                    path_equity.append(round(path_equity[-1] * (1 + 0.6 * r_ret + 0.4 * r_noise), 2))
+                mc_paths.append(path_equity)
+
             return AgentResult(
                 agent_name=self.name,
                 equity_curve=equity,
                 dates=dates,
                 trade_log=[],
+                paths=mc_paths,
                 metrics={
                     "modified_duration": round(mod_dur, 3),
                     "dv01": round(dv01, 4),

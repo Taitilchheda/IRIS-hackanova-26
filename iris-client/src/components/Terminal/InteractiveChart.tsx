@@ -1,222 +1,186 @@
 'use client'
 
-import React, { useState, useRef, useEffect } from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts'
+import React, { useRef, useEffect } from 'react'
+import { 
+  createChart, 
+  ColorType, 
+  IChartApi, 
+  ISeriesApi,
+  LineSeries,
+  AreaSeries
+} from 'lightweight-charts'
 import { EquityPoint, DrawdownPoint } from '@/types'
-import { cn } from '@/utils'
 
 interface InteractiveChartProps {
-  data: EquityPoint[] | DrawdownPoint[]
-  type: 'equity' | 'drawdown' | 'volume'
+  data: any[]
+  mcPaths?: number[][]
+  type: 'equity' | 'drawdown' | 'volume' | 'price' | 'montecarlo' | 'rolling'
   height?: number
-  showGrid?: boolean
-  showTooltip?: boolean
   className?: string
-  onCrosshairMove?: (data: any) => void
+  showTrader?: boolean
+  showExpert?: boolean
+  showSpy?: boolean
 }
 
 export function InteractiveChart({ 
   data, 
+  mcPaths = [],
   type, 
   height = 300, 
-  showGrid = true,
-  showTooltip = true,
   className,
-  onCrosshairMove
+  showTrader = true,
+  showExpert = true,
+  showSpy = true
 }: InteractiveChartProps) {
-  const [crosshairData, setCrosshairData] = useState<any>(null)
-  const [isHovering, setIsHovering] = useState(false)
-  const chartRef = useRef<HTMLDivElement>(null)
+  const chartContainerRef = useRef<HTMLDivElement>(null)
+  const chartRef = useRef<IChartApi | null>(null)
+  const seriesRef = useRef<ISeriesApi<any> | null>(null)
+  const expertSeriesRef = useRef<ISeriesApi<any> | null>(null)
+  const spySeriesRef = useRef<ISeriesApi<any> | null>(null)
+  const mcSeriesRefs = useRef<ISeriesApi<any>[]>([])
 
-  const handleMouseMove = (data: any) => {
-    if (data && data.activePayload) {
-      setCrosshairData(data.activePayload[0])
-      onCrosshairMove?.(data.activePayload[0])
+  useEffect(() => {
+    if (!chartContainerRef.current) return
+
+    const handleResize = () => {
+      chartRef.current?.applyOptions({ width: chartContainerRef.current?.clientWidth })
     }
-  }
 
-  const handleMouseLeave = () => {
-    setCrosshairData(null)
-    setIsHovering(false)
-  }
+    const chart = createChart(chartContainerRef.current, {
+      layout: {
+        background: { type: ColorType.Solid, color: '#000000' },
+        textColor: '#FFFFFF',
+        fontSize: 10,
+        fontFamily: 'JetBrains Mono, monospace',
+      },
+      grid: {
+        vertLines: { color: '#111111' },
+        horzLines: { color: '#111111' },
+      },
+      width: chartContainerRef.current.clientWidth,
+      height: height || 300,
+      timeScale: {
+        borderColor: '#222222',
+        timeVisible: true,
+      },
+      rightPriceScale: {
+        borderColor: '#222222',
+      },
+    })
 
-  const handleMouseEnter = () => {
-    setIsHovering(true)
-  }
-
-  const formatCurrency = (value: number) => {
-    return `$${(value / 1000).toFixed(0)}k`
-  }
-
-  const formatPercent = (value: number) => {
-    return `${value.toFixed(1)}%`
-  }
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length && showTooltip) {
-      return (
-        <div className="bg-elevated border border-border2 p-3 rounded-sm shadow-lg">
-          <div className="text-text3 text-xs mb-2">{label}</div>
-          {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center gap-2 text-xs">
-              <div 
-                className="w-2 h-2 rounded-full" 
-                style={{ backgroundColor: entry.color }}
-              />
-              <span className="text-text2">{entry.name}:</span>
-              <span className="text-text font-mono">
-                {type === 'drawdown' ? formatPercent(entry.value) : formatCurrency(entry.value)}
-              </span>
-            </div>
-          ))}
-        </div>
-      )
-    }
-    return null
-  }
-
-  const renderChart = () => {
-    const commonProps = {
-      data,
-      margin: { top: 10, right: 30, left: 0, bottom: 0 },
-      onMouseMove: handleMouseMove,
-      onMouseLeave: handleMouseLeave,
-      onMouseEnter: handleMouseEnter
-    }
+    chartRef.current = chart
 
     if (type === 'drawdown') {
-      return (
-        <AreaChart {...commonProps}>
-          {showGrid && <CartesianGrid strokeDasharray="3 3" stroke="#1a3048" />}
-          <XAxis 
-            dataKey="date" 
-            stroke="#2e4a60" 
-            fontSize={9}
-            tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
-          />
-          <YAxis 
-            stroke="#2e4a60" 
-            fontSize={9}
-            tickFormatter={formatPercent}
-            domain={[0, 'dataMax']}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Area
-            type="monotone"
-            dataKey="trader"
-            stroke="rgba(255,61,90,0.8)"
-            fill="rgba(255,61,90,0.07)"
-            strokeWidth={1.5}
-            name="Trader DD"
-          />
-          <Area
-            type="monotone"
-            dataKey="expert"
-            stroke="rgba(255,184,0,0.5)"
-            fill="transparent"
-            strokeWidth={1}
-            name="Expert DD"
-          />
-        </AreaChart>
+      seriesRef.current = chart.addSeries(AreaSeries, {
+        lineColor: '#FF4466',
+        topColor: 'rgba(255, 68, 102, 0.2)',
+        bottomColor: 'rgba(255, 68, 102, 0.0)',
+        lineWidth: 1,
+        title: 'TRADER DD',
+      })
+    } else if (type === 'montecarlo') {
+      // Add background paths
+      for (let i = 0; i < 20; i++) {
+        const s = chart.addSeries(LineSeries, {
+          color: 'rgba(0, 229, 195, 0.05)',
+          lineWidth: 1,
+          lastValueVisible: false,
+          priceLineVisible: false,
+        })
+        mcSeriesRefs.current.push(s)
+      }
+      // Add median line
+      seriesRef.current = chart.addSeries(LineSeries, {
+        color: '#00E5C3',
+        lineWidth: 2,
+        title: 'P50 MEDIAN',
+      })
+    } else if (type === 'rolling') {
+      seriesRef.current = chart.addSeries(AreaSeries, {
+        lineColor: '#A78BFA',
+        topColor: 'rgba(167, 139, 250, 0.2)',
+        bottomColor: 'rgba(167, 139, 250, 0.0)',
+        lineWidth: 2,
+        title: 'ROLLING SHARPE',
+      })
+    } else {
+      seriesRef.current = chart.addSeries(LineSeries, {
+        color: '#00E5C3',
+        lineWidth: 2,
+        title: 'TRADER',
+        visible: showTrader,
+      })
+      
+      expertSeriesRef.current = chart.addSeries(LineSeries, {
+        color: '#F0A500',
+        lineWidth: 2,
+        title: 'EXPERT',
+        visible: showExpert,
+      })
+
+      spySeriesRef.current = chart.addSeries(LineSeries, {
+        color: '#2E4A60',
+        lineWidth: 1,
+        lineStyle: 2,
+        title: 'SPY',
+        visible: showSpy,
+      })
+    }
+
+    chart.timeScale().fitContent()
+    window.addEventListener('resize', handleResize)
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      chart.remove()
+      mcSeriesRefs.current = []
+    }
+  }, [height, type, showTrader, showExpert, showSpy])
+
+  useEffect(() => {
+    if (!seriesRef.current || !data || data.length === 0) return
+
+    const baseTimes = data.map(pt => Math.floor(new Date(pt.date).getTime() / 1000)).sort((a,b) => a-b)
+    const uniqueTimes = Array.from(new Set(baseTimes))
+
+    const formatData = (key: string) => {
+      return data.map(pt => ({
+        time: Math.floor(new Date(pt.date).getTime() / 1000) as any,
+        value: pt[key] || 0
+      })).sort((a,b) => a.time - b.time).filter((pt, idx, self) => 
+        idx === 0 || pt.time !== self[idx-1].time
       )
     }
 
-    return (
-      <LineChart {...commonProps}>
-        {showGrid && <CartesianGrid strokeDasharray="3 3" stroke="#1a3048" />}
-        <XAxis 
-          dataKey="date" 
-          stroke="#2e4a60" 
-          fontSize={9}
-          tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
-        />
-        <YAxis 
-          stroke="#2e4a60" 
-          fontSize={9}
-          tickFormatter={type === 'volume' ? undefined : formatCurrency}
-        />
-        <Tooltip content={<CustomTooltip />} />
-        
-        {(data as EquityPoint[])[0]?.trader && (
-          <Line 
-            type="monotone" 
-            dataKey="trader" 
-            stroke="#00ffe0" 
-            strokeWidth={1.5} 
-            dot={false}
-            name="Trader"
-            animationDuration={1000}
-          />
-        )}
-        
-        {(data as EquityPoint[])[0]?.expert && (
-          <Line 
-            type="monotone" 
-            dataKey="expert" 
-            stroke="#ffb800" 
-            strokeWidth={1.5} 
-            dot={false}
-            name="Expert"
-            animationDuration={1200}
-          />
-        )}
-        
-        {(data as EquityPoint[])[0]?.spy && (
-          <Line 
-            type="monotone" 
-            dataKey="spy" 
-            stroke="#2e4a60" 
-            strokeWidth={1} 
-            dot={false}
-            strokeDasharray="3 3"
-            name="SPY"
-            animationDuration={1400}
-          />
-        )}
-      </LineChart>
-    )
-  }
+    if (type === 'montecarlo' && mcPaths.length > 0) {
+      // Plot sample paths
+      mcPaths.slice(0, 20).forEach((path, i) => {
+        if (mcSeriesRefs.current[i]) {
+          const pathData = path.map((val, idx) => ({
+            time: uniqueTimes[idx] as any,
+            value: val
+          }))
+          mcSeriesRefs.current[i].setData(pathData)
+        }
+      })
+      // Compute and plot median
+      const medianPath = formatData('trader') // Fallback to trader if no median calculated
+      seriesRef.current.setData(medianPath)
+    } else {
+      seriesRef.current.setData(formatData(type === 'drawdown' ? 'trader' : (type === 'rolling' ? 'value' : 'trader')))
+      
+      if ((type === 'equity' || type === 'price') && expertSeriesRef.current && spySeriesRef.current) {
+        expertSeriesRef.current.setData(formatData('expert'))
+        spySeriesRef.current.setData(formatData('spy'))
+      }
+    }
+
+    chartRef.current?.timeScale().fitContent()
+  }, [data, mcPaths, type])
 
   return (
-    <div 
-      ref={chartRef}
-      className={cn(
-        'relative w-full transition-all duration-200',
-        isHovering && 'z-10',
-        className
-      )}
-      style={{ height }}
-    >
-      <ResponsiveContainer width="100%" height="100%">
-        {renderChart()}
-      </ResponsiveContainer>
-      
-      {/* Crosshair overlay */}
-      {isHovering && crosshairData && (
-        <div 
-          className="absolute top-0 right-0 bg-elevated border border-border2 p-2 text-xs rounded-sm pointer-events-none z-20"
-          style={{ transform: 'translateY(-100%)' }}
-        >
-          <div className="text-text3 mb-1">
-            {new Date(crosshairData.payload.date).toLocaleDateString()}
-          </div>
-          <div className="space-y-1">
-            {Object.keys(crosshairData.payload)
-              .filter((key) => key !== 'date')
-              .map((key) => {
-                const value = crosshairData.payload[key as keyof typeof crosshairData.payload]
-                return (
-                  <div key={key} className="flex items-center gap-2">
-                    <span className="text-text2 capitalize">{key}:</span>
-                    <span className="text-text font-mono">
-                      {type === 'drawdown' ? formatPercent(value as number) : formatCurrency(value as number)}
-                    </span>
-                  </div>
-                )
-              })}
-          </div>
-        </div>
-      )}
+    <div className={className}>
+      <div ref={chartContainerRef} className="w-full border border-[#222]" />
     </div>
   )
 }

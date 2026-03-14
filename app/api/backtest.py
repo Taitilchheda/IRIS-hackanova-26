@@ -36,7 +36,7 @@ async def run_backtest(req: RunRequest, session: Session = Depends(get_session),
             expert_type=req.expert_type,
         )
         result = ts.model_dump()
-        _persist_tearsheet(result)
+        _persist_tearsheet(result, user_id=current_user.id)
         return result
     except ValueError as e:
         log.error(f"/backtest value error: {e}")

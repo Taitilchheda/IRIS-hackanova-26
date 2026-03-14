@@ -16,6 +16,29 @@ from app.utils.logger import get_logger
 log = get_logger(__name__)
 
 
+def _simulate_gbm_paths(initial_capital: float, returns: np.ndarray, 
+                         n_days: int, n_paths: int, seed: int = 42) -> np.ndarray:
+    """Simulate GBM paths based on historical return distribution."""
+    rng = np.random.default_rng(seed)
+    mu = np.mean(returns)
+    sigma = np.std(returns)
+    
+    # Generate drift and shock
+    dt = 1
+    drift = (mu - 0.5 * sigma**2) * dt
+    vol = sigma * np.sqrt(dt)
+    
+    z = rng.standard_normal((n_paths, n_days))
+    log_returns = drift + vol * z
+    paths = initial_capital * np.exp(np.cumsum(log_returns, axis=1))
+    
+    # Add initial capital as first column
+    paths_with_initial = np.zeros((n_paths, n_days + 1))
+    paths_with_initial[:, 0] = initial_capital
+    paths_with_initial[:, 1:] = paths
+    return paths_with_initial
+
+
 def _kalman_hedge_ratio(x: np.ndarray, y: np.ndarray) -> np.ndarray:
     """Simple Kalman filter for dynamic OLS hedge ratio."""
     n = len(x)
@@ -112,12 +135,22 @@ class AlphaSignalAgent(BaseExpertAgent):
                         trade_log.append({"date": dates[i], "side": "BUY",
                                           "price": round(y[i], 2), "quantity": 100, "pnl_pct": None})
 
+            # Generate Monte Carlo paths for visualization
+            returns_arr = np.diff(equity) / equity[:-1]
+            returns_arr = returns_arr[np.isfinite(returns_arr)]
+            mc_paths = _simulate_gbm_paths(
+                initial_capital=spec.initial_capital,
+                returns=returns_arr,
+                n_days=len(equity) - 1,
+                n_paths=100  # Sample paths for UI
+            )
+
             return AgentResult(
                 agent_name=self.name,
                 equity_curve=equity,
                 dates=dates,
                 trade_log=trade_log,
-                paths=[hedge.tolist(), z.tolist()],  # Visualization: [Hedge Ratio, Z-Score]
+                paths=mc_paths.tolist(),
                 metrics={"kalman_final_hedge": round(float(hedge[-1]), 4)},
                 elapsed_seconds=round(time.time() - t0, 2),
             )

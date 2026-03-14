@@ -105,11 +105,21 @@ class MicrostructureAgent(BaseExpertAgent):
                                           "price": round(close[i], 2), "quantity": 100,
                                           "pnl_pct": None})
 
+            # Generate Monte Carlo paths
+            from app.agents.expert.alpha_signal import _simulate_gbm_paths
+            mc_paths = _simulate_gbm_paths(
+                initial_capital=spec.initial_capital,
+                returns=np.diff(equity) / equity[:-1],
+                n_days=len(equity) - 1,
+                n_paths=100
+            )
+
             return AgentResult(
                 agent_name=self.name,
                 equity_curve=equity,
                 dates=dates,
                 trade_log=trade_log,
+                paths=mc_paths.tolist(),
                 metrics={
                     "bull_regime_pct": round(float(np.mean(states)), 4),
                     "regime_switches": int(np.sum(np.diff(states) != 0)),

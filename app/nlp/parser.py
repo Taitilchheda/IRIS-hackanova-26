@@ -22,24 +22,7 @@ def _load_prompt(name: str) -> str:
     return (PROMPT_DIR / name).read_text(encoding="utf-8")
 
 
-def _call_llm(system: str, user: str) -> str:
-    """Call Anthropic Claude. Returns raw text."""
-    try:
-        import anthropic
-        api_key = os.getenv("ANTHROPIC_API_KEY", "")
-        if not api_key:
-            raise ValueError("No ANTHROPIC_API_KEY set")
-        client = anthropic.Anthropic(api_key=api_key)
-        msg = client.messages.create(
-            model="claude-3-5-haiku-20241022",
-            max_tokens=1024,
-            system=system,
-            messages=[{"role": "user", "content": user}],
-        )
-        return msg.content[0].text.strip()
-    except Exception as e:
-        log.warning(f"LLM call failed: {e}")
-        return ""
+from app.utils.llm import _call_llm
 
 
 # ── Rule-based fallback parser ────────────────────────────────────────────
@@ -106,14 +89,49 @@ def _rule_based_parse(prompt: str, asset: str) -> dict:
     elif any(w in prompt_lower for w in ['vwap', 'twap', 'execution', 'regime']):
         strategy_type = "microstructure"
 
-    # Default entry: buy and hold if no conditions found
+    # Sector mapping (Rule-based fallback)
+    sector_map = {
+        "technology": "XLK", "tech": "XLK",
+        "healthcare": "XLV", "health": "XLV",
+        "financials": "XLF", "finance": "XLF", "bank": "XLF",
+        "energy": "XLE", "oil": "XLE",
+        "utilities": "XLU",
+        "consumer staples": "XLP",
+        "consumer discretionary": "XLY",
+        "industrials": "XLI",
+        "materials": "XLB",
+        "real estate": "XLRE",
+    }
+    for sector, tick in sector_map.items():
+        if sector in prompt_lower:
+            asset = tick
+            break
+
+    # Detect temporal entry (e.g., 1st of every month)
+    day_m = re.search(r'(\d+)(?:st|nd|rd|th)?\s+of\s+(?:every|the|each)?\s*month', prompt, re.I)
+    if day_m:
+        day_val = int(day_m.group(1))
+        entry = [{
+            "indicator": "DAY_OF_MONTH",
+            "params": {},
+            "operator": "=",
+            "value": day_val
+        }]
+
+    # Detect temporal exit (e.g., sell on 12th)
+    exit_day_m = re.search(r'sell\s+(?:on|at)\s+(?:the\s+)?(\d+)(?:st|nd|rd|th)?', prompt, re.I)
+    if exit_day_m:
+        day_val = int(exit_day_m.group(1))
+        exit_ = [{
+            "indicator": "DAY_OF_MONTH",
+            "params": {},
+            "operator": "=",
+            "value": day_val
+        }]
+
+    # Default: buy and hold if no conditions found
     if not entry:
-        entry.append({
-            "indicator": "SMA",
-            "params": {"window": 50},
-            "operator": "crosses_above",
-            "value": {"indicator": "SMA", "params": {"window": 200}}
-        })
+        pass
 
     rules_parts = [f"Strategy type: {strategy_type.replace('_', ' ').title()}"]
     for e in entry:
@@ -143,6 +161,7 @@ class StrategyParser:
         commission_pct: float = 0.001,
         slippage_pct: float = 0.0005,
         max_position_pct: float = 1.0,
+        monte_carlo_paths: int = 1000,
     ) -> StrategySpec:
         log.info(f"Parsing strategy: {prompt[:80]}...")
 
@@ -211,6 +230,7 @@ class StrategyParser:
             strategy_type=strategy_type,
             confidence=parsed.get("confidence", 0.72),
             parsed_rules_text=parsed.get("parsed_rules_text", ""),
+            monte_carlo_paths=monte_carlo_paths,
         )
         log.info(f"Parsed: type={spec.strategy_type}, confidence={spec.confidence:.2f}")
         return spec

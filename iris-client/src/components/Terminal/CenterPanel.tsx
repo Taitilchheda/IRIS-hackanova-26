@@ -1,304 +1,218 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar } from 'recharts'
+import React, { useState } from 'react'
 import { EquityPoint, DrawdownPoint } from '@/types'
 import { cn } from '@/utils'
+import { InteractiveChart } from './InteractiveChart'
+import { Maximize2, Settings2, Share2, Layers } from 'lucide-react'
 
 interface CenterPanelProps {
   equityData?: EquityPoint[]
   drawdownData?: DrawdownPoint[]
-  volumeData?: any[]
+  mcPaths?: number[][]
   isLoading?: boolean
-}
-
-interface ToggleState {
-  id: string
-  label: string
-  on: boolean
+  viewMode?: string
 }
 
 const chartTabs = [
-  { id: 'equity', label: 'EQUITY CURVE', subLabel: 'TRADER vs EXPERT vs SPY' },
-  { id: 'drawdown', label: 'DRAWDOWN', subLabel: 'PEAK-TO-TROUGH DECLINE' },
-  { id: 'rolling', label: 'ROLLING METRICS', subLabel: '90-DAY ROLLING SHARPE' },
-  { id: 'waterfall', label: 'P&L WATERFALL', subLabel: 'MONTHLY P&L ATTRIBUTION' }
-]
-
-const togglesConfig = [
-  { id: 'trader', label: 'TRADER', defaultOn: true },
-  { id: 'expert', label: 'EXPERT', defaultOn: true },
-  { id: 'spy', label: 'SPY', defaultOn: true },
-  { id: 'dd', label: 'DRAWDOWN FILL', defaultOn: false }
+  { id: 'equity', label: '11 GP', subLabel: 'EQUITY CURVE' },
+  { id: 'drawdown', label: '12 DD', subLabel: 'DRAWDOWN' },
+  { id: 'montecarlo', label: '13 MC', subLabel: 'MONTE CARLO' },
+  { id: 'rolling', label: '14 RS', subLabel: 'ROLLING SHARPE' },
 ]
 
 export function CenterPanel({ 
   equityData = [],
   drawdownData = [],
-  volumeData = [],
-  isLoading = false
+  mcPaths = [],
+  isLoading = false,
+  viewMode = 'STRATEGY LAB'
 }: CenterPanelProps) {
-  const [activeTab, setActiveTab] = useState('equity')
-  const [toggles, setToggles] = useState<ToggleState[]>(
-    togglesConfig.map(t => ({ id: t.id, label: t.label, on: t.defaultOn }))
-  )
-
-  const handleToggle = (id: string) => {
-    setToggles(prev => 
-      prev.map(toggle => 
-        toggle.id === id ? { ...toggle, on: !toggle.on } : toggle
-      )
-    )
-  }
-
-  const formatCurrency = (value: number) => {
-    return `$${(value / 1000).toFixed(0)}k`
-  }
-
-  const formatPercent = (value: number) => {
-    return `${value.toFixed(1)}%`
-  }
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-elevated border border-border2 p-2 text-[9px] text-text">
-          <div className="text-text3 mb-1">{label}</div>
-          {payload.map((entry: any, index: number) => (
-            <div key={index} style={{ color: entry.color }}>
-              {entry.name}: {entry.dataKey.includes('Value') ? formatCurrency(entry.value) : formatPercent(entry.value)}
-            </div>
-          ))}
-        </div>
-      )
-    }
-    return null
-  }
-
-  const renderChart = () => {
-    const commonProps = {
-      data: activeTab === 'drawdown' ? drawdownData : equityData,
-      margin: { top: 10, right: 30, left: 0, bottom: 0 }
-    }
-
-    switch (activeTab) {
-      case 'equity':
-        return (
-          <LineChart {...commonProps}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1a3048" />
-            <XAxis 
-              dataKey="date" 
-              stroke="#2e4a60" 
-              fontSize={9}
-              tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
-            />
-            <YAxis 
-              stroke="#2e4a60" 
-              fontSize={9}
-              tickFormatter={formatCurrency}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            {toggles.find(t => t.id === 'trader')?.on && (
-              <Line 
-                type="monotone" 
-                dataKey="trader" 
-                stroke="#00ffe0" 
-                strokeWidth={1.5} 
-                dot={false}
-                name="Trader"
-              />
-            )}
-            {toggles.find(t => t.id === 'expert')?.on && (
-              <Line 
-                type="monotone" 
-                dataKey="expert" 
-                stroke="#ffb800" 
-                strokeWidth={1.5} 
-                dot={false}
-                name="Expert"
-              />
-            )}
-            {toggles.find(t => t.id === 'spy')?.on && (
-              <Line 
-                type="monotone" 
-                dataKey="spy" 
-                stroke="#2e4a60" 
-                strokeWidth={1} 
-                dot={false}
-                strokeDasharray="3 3"
-                name="SPY"
-              />
-            )}
-          </LineChart>
-        )
-
-      case 'drawdown':
-        return (
-          <AreaChart {...commonProps}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1a3048" />
-            <XAxis 
-              dataKey="date" 
-              stroke="#2e4a60" 
-              fontSize={9}
-              tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
-            />
-            <YAxis 
-              stroke="#2e4a60" 
-              fontSize={9}
-              tickFormatter={formatPercent}
-              domain={[0, 'dataMax']}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Area
-              type="monotone"
-              dataKey="trader"
-              stroke="rgba(255,61,90,0.8)"
-              fill="rgba(255,61,90,0.07)"
-              strokeWidth={1}
-              name="Trader DD"
-            />
-            <Area
-              type="monotone"
-              dataKey="expert"
-              stroke="rgba(255,184,0,0.5)"
-              fill="transparent"
-              strokeWidth={1}
-              name="Expert DD"
-            />
-          </AreaChart>
-        )
-
-      case 'rolling':
-        return (
-          <div className="flex items-center justify-center h-full text-text3">
-            <div className="text-center">
-              <div className="text-sm mb-2">Rolling Metrics</div>
-              <div className="text-xs">90-day rolling Sharpe ratio analysis</div>
-              <div className="text-xs mt-2 text-text2">Available after strategy execution</div>
-            </div>
-          </div>
-        )
-
-      case 'waterfall':
-        return (
-          <div className="flex items-center justify-center h-full text-text3">
-            <div className="text-center">
-              <div className="text-sm mb-2">P&L Waterfall</div>
-              <div className="text-xs">Monthly P&L attribution analysis</div>
-              <div className="text-xs mt-2 text-text2">Available after strategy execution</div>
-            </div>
-          </div>
-        )
-
-      default:
-        return (
-          <LineChart {...commonProps}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1a3048" />
-            <XAxis dataKey="date" stroke="#2e4a60" fontSize={9} />
-            <YAxis stroke="#2e4a60" fontSize={9} />
-            <Tooltip content={<CustomTooltip />} />
-          </LineChart>
-        )
-    }
-  }
+  const [activeTab, setActiveTab ] = useState('equity')
+  const [showTrader, setShowTrader] = useState(true)
+  const [showExpert, setShowExpert] = useState(true)
+  const [showSpy, setShowSpy] = useState(true)
 
   const currentTab = chartTabs.find(tab => tab.id === activeTab)
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-panel">
-      {/* Chart Tabs */}
-      <div className="h-[32px] flex items-center px-4 border-b border-border bg-surface flex-shrink-0">
+    <div className="flex-1 flex flex-col overflow-hidden bg-[#07090F]">
+      {/* Bloomberg Sub-Header */}
+      <div className="h-[36px] flex items-center px-4 bg-[#0C1018] border-b border-[#1B2333]/30 flex-shrink-0">
         <div className="flex h-full">
           {chartTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "px-3.5 h-full flex items-center text-[9px] tracking-wider transition-all duration-150 border-r border-border",
+                "px-4 h-full flex items-center transition-all text-[11px] font-bold border-r border-[#1B2333]/30",
                 activeTab === tab.id
-                  ? "text-teal"
-                  : "text-text2 hover:text-text hover:bg-teal/10"
+                  ? "bg-[#00E5C3]/10 text-[#00E5C3] border-b-2 border-b-[#00E5C3]"
+                  : "text-[#4A6070] hover:text-[#C8D8E8]"
               )}
             >
               {tab.label}
             </button>
           ))}
         </div>
-
+        
         <div className="ml-auto flex items-center gap-2">
-          {toggles.map((toggle) => (
-            <button
-              key={toggle.id}
-              onClick={() => handleToggle(toggle.id)}
+          {[
+            { id: 'trader', label: 'Trader', state: showTrader, set: setShowTrader, color: 'bg-[#00E5C3]' },
+            { id: 'expert', label: 'Expert', state: showExpert, set: setShowExpert, color: 'bg-[#F0A500]' },
+            { id: 'spy', label: 'SPY', state: showSpy, set: setShowSpy, color: 'bg-[#2E4A60]' },
+          ].map(btn => (
+             <button
+              key={btn.id}
+              onClick={() => btn.set(!btn.state)}
               className={cn(
-                "text-[8px] px-2 py-0.5 border transition-all duration-150",
-                toggle.on
-                  ? "border-teal2 text-teal bg-teal/10"
-                  : "border-border2 text-text2 hover:border-teal2 hover:text-teal"
+                "flex items-center gap-1.5 px-2 py-1 rounded transition-all border text-[9px] font-bold",
+                btn.state 
+                  ? "border-[#1B2333] bg-[#141B26] text-[#C8D8E8]" 
+                  : "border-transparent text-[#4A6070]"
               )}
             >
-              {toggle.label}
+              <div className={cn("w-2 h-0.5 rounded-full", btn.state ? btn.color : "bg-[#263040]")} />
+              {btn.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Charts Area */}
-      <div className="flex-1 grid grid-rows-[1fr_180px_120px] overflow-hidden gap-px bg-border">
-        {/* Main Chart */}
-        <div className="bg-panel relative overflow-hidden">
-          <div className="absolute top-2 left-3 text-[9px] text-text2 tracking-wider z-10 pointer-events-none">
-            {currentTab?.label} · <span className="text-teal font-medium">{currentTab?.subLabel}</span>
-          </div>
-          <ResponsiveContainer width="100%" height="100%">
-            {renderChart()}
-          </ResponsiveContainer>
-        </div>
+      {/* Main Analysis Display */}
+      <div className="flex-1 flex flex-col p-3 gap-3 overflow-hidden">
+        {viewMode === 'PORTFOLIO' ? (
+           <div className="flex-1 grid grid-cols-2 gap-3">
+              <div className="bg-[#0C1018] border border-[#1B2333]/30 rounded-lg p-6 flex flex-col items-center justify-center">
+                 <div className="text-[10px] font-bold text-[#4A6070] uppercase mb-4">Current Allocation</div>
+                 <div className="w-32 h-32 rounded-full border-4 border-[#00E5C3] border-t-transparent animate-spin-slow" />
+                 <div className="mt-4 text-[11px] text-[#C8D8E8]">Optimizing Weights...</div>
+              </div>
+              <div className="bg-[#0C1018] border border-[#1B2333]/30 rounded-lg p-4">
+                 <div className="text-[10px] font-bold text-[#4A6070] uppercase mb-4">Risk Contribution</div>
+                 <div className="space-y-3">
+                    {['AAPL', 'SPY', 'USD/JPY'].map(s => (
+                       <div key={s} className="flex flex-col gap-1">
+                          <div className="flex justify-between text-[9px] font-bold uppercase">
+                             <span>{s}</span>
+                             <span>33%</span>
+                          </div>
+                          <div className="w-full h-1 bg-[#141B26] rounded-full overflow-hidden">
+                             <div className="h-full bg-[#00E5C3] w-[33%]" />
+                          </div>
+                       </div>
+                    ))}
+                 </div>
+              </div>
+           </div>
+        ) : viewMode === 'RISK DESK' ? (
+           <div className="flex-1 flex flex-col gap-3">
+              <div className="grid grid-cols-3 gap-3">
+                 {[
+                   { l: 'VaR (95%)', v: '-2.4%' },
+                   { l: 'Expected Shortfall', v: '-3.1%' },
+                   { l: 'Stress Delta', v: '0.14' }
+                 ].map(i => (
+                    <div key={i.l} className="bg-[#0C1018] border border-[#1B2333]/30 rounded-lg p-3 text-center">
+                       <div className="text-[8px] font-bold text-[#4A6070] uppercase mb-1">{i.l}</div>
+                       <div className="text-xl font-bold text-red tabular-nums">{i.v}</div>
+                    </div>
+                 ))}
+              </div>
+              <div className="flex-1 bg-[#0C1018] border border-[#1B2333]/30 rounded-lg relative">
+                 <div className="absolute top-3 left-4 text-[9px] font-bold text-[#4A6070] uppercase">Stress Test Surface</div>
+                 <div className="w-full h-full flex items-center justify-center opacity-30">
+                    <Layers size={40} className="text-[#00E5C3]" />
+                 </div>
+              </div>
+           </div>
+        ) : viewMode === 'EXECUTION' ? (
+           <div className="flex-1 flex flex-col gap-3">
+              <div className="bg-[#0C1018] border border-[#1B2333]/30 rounded-lg p-3 flex flex-col flex-1">
+                 <div className="flex justify-between items-center mb-4">
+                    <span className="text-[10px] font-bold text-[#4A6070] uppercase">Active Execution Blotter</span>
+                    <div className="flex items-center gap-2">
+                       <div className="w-2 h-2 rounded-full bg-[#1ED98A] animate-pulse" />
+                       <span className="text-[9px] text-[#C8D8E8] font-bold">ALGO: RUNNING</span>
+                    </div>
+                 </div>
+                 <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                       <thead>
+                          <tr className="text-[9px] text-[#4A6070] border-b border-[#1B2333]/30 uppercase font-bold">
+                             <th className="pb-2">Time</th>
+                             <th className="pb-2">Asset</th>
+                             <th className="pb-2">Side</th>
+                             <th className="pb-2">Size</th>
+                             <th className="pb-2">Price</th>
+                             <th className="pb-2">Status</th>
+                          </tr>
+                       </thead>
+                       <tbody className="text-[10px] font-medium text-[#C8D8E8]">
+                          {[
+                            { t: '16:04:12', a: 'AAPL', s: 'BUY', z: '100', p: '192.42', st: 'FILLED' },
+                            { t: '16:04:15', a: 'AAPL', s: 'SELL', z: '50', p: '192.51', st: 'PENDING' },
+                          ].map((row, i) => (
+                             <tr key={i} className="border-b border-[#1B2333]/10 hover:bg-[#141B26]/50 transition-colors">
+                                <td className="py-2 text-[#4A6070]">{row.t}</td>
+                                <td className="py-2 font-bold">{row.a}</td>
+                                <td className={`py-2 font-bold ${row.s === 'BUY' ? 'text-[#1ED98A]' : 'text-red'}`}>{row.s}</td>
+                                <td className="py-2">{row.z}</td>
+                                <td className="py-2 tabular-nums">{row.p}</td>
+                                <td className="py-2"><span className="px-1.5 py-0.5 bg-[#1ED98A]/10 text-[#1ED98A] rounded-[2px] text-[8px] font-bold uppercase">{row.st}</span></td>
+                             </tr>
+                          ))}
+                       </tbody>
+                    </table>
+                 </div>
+              </div>
+           </div>
+        ) : (
+          <>
+            {/* Primary Chart Area */}
+            <div className="flex-[2] bg-[#0C1018] border border-[#1B2333]/30 rounded-lg relative overflow-hidden">
+              <div className="absolute top-3 left-4 z-10">
+                <span className="text-[10px] font-bold text-[#4A6070] uppercase tracking-widest leading-none">
+                  {currentTab?.subLabel} · <span className="text-[#C8D8E8]">ACTIVE ANALYSIS</span>
+                </span>
+              </div>
+              <InteractiveChart 
+                type={activeTab as any}
+                data={activeTab === 'rolling' ? equityData.map(pt => ({ ...pt, value: pt.trader / 100000 })) : (activeTab === 'drawdown' ? drawdownData : equityData)}
+                mcPaths={mcPaths}
+                showTrader={showTrader}
+                showExpert={showExpert}
+                showSpy={showSpy}
+                height={0}
+                className="h-full"
+              />
+            </div>
 
-        {/* Drawdown Chart */}
-        <div className="bg-panel relative overflow-hidden">
-          <div className="absolute top-2 left-3 text-[9px] text-text2 tracking-wider z-10 pointer-events-none">
-            DRAWDOWN <span className="text-red">█</span>
-          </div>
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={drawdownData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1a3048" />
-              <XAxis dataKey="date" stroke="#2e4a60" fontSize={9} hide />
-              <YAxis 
-                stroke="#2e4a60" 
-                fontSize={9}
-                tickFormatter={formatPercent}
-                domain={[0, 'dataMax']}
-              />
-              <Area
-                type="monotone"
-                dataKey="trader"
-                stroke="rgba(255,61,90,0.8)"
-                fill="rgba(255,61,90,0.07)"
-                strokeWidth={1}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Volume/Signal Chart */}
-        <div className="bg-panel relative overflow-hidden">
-          <div className="absolute top-2 left-3 text-[9px] text-text2 tracking-wider z-10 pointer-events-none">
-            VOLUME · <span className="text-text2">SIGNAL STRENGTH</span>
-          </div>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={volumeData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1a3048" />
-              <XAxis dataKey="date" stroke="#2e4a60" fontSize={9} hide />
-              <YAxis stroke="#2e4a60" fontSize={9} />
-              <Bar 
-                dataKey="signal" 
-                fill="rgba(0,255,224,0.5)"
-                radius={[0, 0, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+            {/* Secondary Grid Area */}
+            <div className="flex-1 grid grid-cols-2 gap-3 overflow-hidden min-h-[180px]">
+              <div className="bg-[#0C1018] border border-[#1B2333]/30 rounded-lg p-3 flex flex-col">
+                <span className="text-[9px] font-bold text-[#4A6070] uppercase tracking-widest mb-3">Volatility Attribution</span>
+                <InteractiveChart 
+                  type="drawdown"
+                  data={drawdownData}
+                  className="flex-1"
+                />
+              </div>
+              <div className="bg-[#0C1018] border border-[#1B2333]/30 rounded-lg p-3 flex flex-col text-center justify-center">
+                <span className="text-[9px] font-bold text-[#4A6070] uppercase tracking-widest mb-2">Signal Conviction</span>
+                <div className="text-3xl font-bold text-[#00E5C3] tabular-nums tracking-tighter mb-2">
+                  0.824
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-32 h-1 bg-[#141B26] rounded-full overflow-hidden">
+                    <div className="h-full bg-[#00E5C3] w-[82%] shadow-[0_0_10px_#00E5C3]" />
+                  </div>
+                  <span className="text-[9px] font-bold text-[#1ED98A]">STRONG BUY</span>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

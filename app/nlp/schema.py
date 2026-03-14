@@ -39,6 +39,7 @@ class StrategySpec(BaseModel):
     strategy_type: StrategyType = StrategyType.ALPHA_SIGNAL
     confidence: float = 0.0
     parsed_rules_text: str = ""
+    monte_carlo_paths: int = 1000
 
 
 class AgentResult(BaseModel):
@@ -46,7 +47,7 @@ class AgentResult(BaseModel):
     equity_curve: List[float] = []
     dates: List[str] = []
     trade_log: List[Dict[str, Any]] = []
-    metrics: Dict[str, float] = {}
+    metrics: Dict[str, Any] = {}
     paths: List[List[float]] = []  # Supports Monte Carlo, Walk-forward, etc.
     error: Optional[str] = None
     elapsed_seconds: float = 0.0

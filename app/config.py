@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openrouter_api_key: str = ""
     openrouter_model: str = "gpt-3.5-turbo"
+    groq_api_key: str = ""
 
     # Data Providers
     alpaca_api_key: Optional[str] = None

@@ -28,23 +28,24 @@ venv_new/
 
 # Env vars
 .env
-.env.example
+!.env.example
 
 # IDEs
 .idea/
 .vscode/
 
-# Frontend (Node)
-frontend/node_modules/
-frontend/dist/
-frontend/.nx/
-.npm/
+# Frontend (IRIS Client)
+iris-client/node_modules/
+iris-client/.next/
+iris-client/dist/
+node_modules/
 
 # Logs / Local DB
 *.log
 *.sqlite3
+iris.db
+iris.db-journal
 
 # Cache Data
-data/*_cache.parquet
 app/data/cache/*.parquet
-node_modules/
+data/*_cache.parquet
