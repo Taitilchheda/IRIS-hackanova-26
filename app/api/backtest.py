@@ -1,27 +1,19 @@
-"""
-POST /backtest — triggers a backtest run given a strategy spec dict.
-"""
 from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session
 from app.nlp.schema import RunRequest
 from app.agents.manager import ManagerAgent
 from app.utils.logger import get_logger
 from app.db import get_session
-from app.api.auth import get_current_user
-from app.models import User
 from app.api.strategy import _persist_tearsheet
 
 log = get_logger(__name__)
 router = APIRouter()
-
 _manager = ManagerAgent()
 
-
 @router.post("/backtest", response_model=None)
-async def run_backtest(req: RunRequest, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+async def run_backtest(req: RunRequest, session: Session = Depends(get_session)):
     """
     Run a full backtest pipeline: parse → trader + expert → verify → compare → narrate.
-    Identical to /run but lives under /backtest for semantic clarity.
     """
     try:
         ts = _manager.run(
@@ -36,7 +28,7 @@ async def run_backtest(req: RunRequest, session: Session = Depends(get_session),
             expert_type=req.expert_type,
         )
         result = ts.model_dump()
-        _persist_tearsheet(session, current_user, result)
+        _persist_tearsheet(session, result)
         return result
     except ValueError as e:
         log.error(f"/backtest value error: {e}")

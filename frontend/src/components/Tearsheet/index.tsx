@@ -9,9 +9,7 @@ export default function TearsheetLayout() {
   const tearsheet = useIRISStore((s) => s.tearsheet)
   const appPhase = useIRISStore((s) => s.appPhase)
 
-  if (!tearsheet || appPhase === 'idle') return null
-
-  // Show skeleton while running
+  if (appPhase === 'idle') return null
   if (appPhase === 'running') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -24,6 +22,8 @@ export default function TearsheetLayout() {
       </div>
     )
   }
+
+  if (!tearsheet) return null
 
   return (
     <motion.div
@@ -105,6 +105,11 @@ export default function TearsheetLayout() {
       <IrisSaysPanel />
 
       <style>{`
+        .tearsheet-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1rem;
+        }
         .tearsheet-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;

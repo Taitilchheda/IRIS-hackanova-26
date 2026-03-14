@@ -1,12 +1,9 @@
-import { NavLink, useNavigate } from 'react-router-dom'
-import { Activity, History, Settings, Cpu, LogIn, LogOut } from 'lucide-react'
+import { NavLink } from 'react-router-dom'
+import { Activity, History, Settings, Cpu } from 'lucide-react'
 import { useIRISStore } from '../store/irisStore'
-import { useAuthStore } from '../store/authStore'
 
 export default function Navbar() {
   const backendAlive = useIRISStore((s) => s.backendAlive)
-  const { user, token, logout } = useAuthStore()
-  const navigate = useNavigate()
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `nav-link ${isActive ? 'active' : ''}`
@@ -37,7 +34,7 @@ export default function Navbar() {
           </NavLink>
         </div>
 
-        {/* Live indicator + user */}
+        {/* Live indicator */}
         <div className="navbar-status">
           <span
             className="status-dot"
@@ -46,17 +43,6 @@ export default function Navbar() {
           <span className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
             {backendAlive ? 'Live' : 'Offline'}
           </span>
-          {token ? (
-            <button className="iris-btn iris-btn-secondary" style={{ padding: '0.35rem 0.75rem' }} onClick={logout}>
-              <LogOut size={14} />
-              <span className="font-mono" style={{ fontSize: '0.75rem' }}>{user?.email}</span>
-            </button>
-          ) : (
-            <button className="iris-btn iris-btn-primary" style={{ padding: '0.35rem 0.75rem' }} onClick={() => navigate('/login')}>
-              <LogIn size={14} />
-              <span className="font-mono" style={{ fontSize: '0.75rem' }}>Sign in</span>
-            </button>
-          )}
         </div>
       </div>
 

@@ -26,6 +26,7 @@ from app.agents.expert.portfolio_construction import PortfolioAgent
 from app.agents.expert.derivatives_pricing import DerivativesPricingAgent
 from app.agents.expert.fixed_income import FixedIncomeAgent
 from app.agents.expert.microstructure import MicrostructureAgent
+from app.agents.expert.trend_following import TrendFollowingAgent
 from app.utils.logger import get_logger, new_run_id
 from app.config import settings
 import httpx
@@ -43,6 +44,8 @@ EXPERT_MAP = {
     StrategyType.MICROSTRUCTURE: MicrostructureAgent,
 }
 
+DEFAULT_EXPERT = TrendFollowingAgent
+
 PROMPT_DIR = Path(__file__).parent.parent / "nlp" / "prompts"
 
 
@@ -50,52 +53,38 @@ def _load_prompt(name: str) -> str:
     return (PROMPT_DIR / name).read_text(encoding="utf-8")
 
 
-def _call_llm(system: str, user: str) -> str:
-    """Try Anthropic first, then OpenRouter (OpenAI-compatible), else return ''."""
-    # Anthropic
-    if settings.anthropic_api_key:
-        try:
-            import anthropic
-            client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-            msg = client.messages.create(
-                model="claude-3-5-haiku-20241022",
-                max_tokens=400,
-                system=system,
-                messages=[{"role": "user", "content": user}],
-            )
-            return msg.content[0].text.strip()
-        except Exception as e:
-            log.warning(f"LLM narrative via Anthropic failed: {e}")
+def _call_llm(system: str, user: str, api_key: str | None = None) -> str:
+    """Use Groq only as requested by user."""
+    if not api_key:
+        log.warning("Groq API key missing for narrative")
+        return ""
 
-    # OpenRouter (free-tier friendly; choose model via env)
-    if settings.openrouter_api_key:
-        try:
-            headers = {
-                "Authorization": f"Bearer {settings.openrouter_api_key}",
-                "Content-Type": "application/json",
-            }
-            payload = {
-                "model": settings.openrouter_model or "gpt-3.5-turbo",
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user},
-                ],
-                "max_tokens": 400,
-                "temperature": 0.3,
-            }
-            resp = httpx.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                json=payload,
-                headers=headers,
-                timeout=20.0,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            return data["choices"][0]["message"]["content"].strip()
-        except Exception as e:
-            log.warning(f"LLM narrative via OpenRouter failed: {e}")
-
-    return ""
+    try:
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": "llama-3.3-70b-versatile", # Or another Groq model
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            "max_tokens": 500,
+            "temperature": 0.3,
+        }
+        resp = httpx.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            json=payload,
+            headers=headers,
+            timeout=25.0,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return data["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        log.warning(f"Groq narrative failed: {e}")
+        return ""
 
 
 class ManagerAgent:
@@ -116,6 +105,7 @@ class ManagerAgent:
         slippage_bps: float = 5.0,
         max_position_pct: float = 1.0,
         expert_type: str | None = None,
+        groq_api_key: str | None = None,
     ) -> Tearsheet:
         run_id = new_run_id()
         log.info(f"=== IRIS Run {run_id} | {asset} | {start_date}→{end_date} ===")
@@ -141,7 +131,7 @@ class ManagerAgent:
                 pass
 
         # 2. Select expert
-        expert_cls = EXPERT_MAP.get(spec.strategy_type, AlphaSignalAgent)
+        expert_cls = EXPERT_MAP.get(spec.strategy_type, DEFAULT_EXPERT)
         expert_agent = expert_cls()
         trader_agent = TraderStrategyAgent()
 
@@ -180,13 +170,13 @@ class ManagerAgent:
         tearsheet = self.comparator.compare(trader_result, expert_result, spec, run_id)
 
         # 6. Narrate with LLM (best effort)
-        narrative = self._narrate(tearsheet)
+        narrative = self._narrate(tearsheet, groq_api_key)
         tearsheet.narrative = narrative
 
         log.info(f"=== Run {run_id} complete in {round(time.time() - t0, 2)}s ===")
         return tearsheet
 
-    def _narrate(self, ts: Tearsheet) -> str:
+    def _narrate(self, ts: Tearsheet, groq_api_key: str | None = None) -> str:
         system = _load_prompt("narrate_tearsheet.txt")
         tm = ts.trader_metrics
         em = ts.expert_metrics
@@ -200,7 +190,7 @@ class ManagerAgent:
             f"SPY Benchmark: CAGR={bm.cagr:.1%}, Sharpe={bm.sharpe:.2f}\n"
             f"Strategy: {ts.strategy_spec.parsed_rules_text}"
         )
-        narrative = _call_llm(system, user)
+        narrative = _call_llm(system, user, groq_api_key)
         if not narrative:
             # Fallback narrative
             narrative = (

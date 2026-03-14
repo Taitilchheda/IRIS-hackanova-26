@@ -3,28 +3,20 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { getTearsheet } from '../api/client'
 import type { Tearsheet } from '../api/client'
-import EquityCurveStandalone from '../components/Tearsheet/EquityCurve'
-import ComparisonTable from '../components/Tearsheet/ComparisonTable'
-import MetricsGrid from '../components/Tearsheet/MetricsGrid'
-import IrisSaysPanel from '../components/Tearsheet/IrisSaysPanel'
+import TearsheetLayout from '../components/Tearsheet'
 import { useIRISStore } from '../store/irisStore'
-import { useAuthStore } from '../store/authStore'
 import QuantWorkspace from '../components/QuantWorkspace'
 
 export default function HistoryDetail() {
   const { runId } = useParams<{ runId: string }>()
   const navigate = useNavigate()
   const setTearsheet = useIRISStore((s) => s.setTearsheet)
-  const { token, hydrate } = useAuthStore()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [tearsheet, setLocalTearsheet] = useState<Tearsheet | null>(null)
 
-  useEffect(() => { hydrate() }, [hydrate])
-  useEffect(() => { if (!token) navigate('/login') }, [token, navigate])
-
   useEffect(() => {
-    if (!runId || !token) return
+    if (!runId) return
     setLoading(true)
     setError(null)
     getTearsheet(runId)
@@ -38,7 +30,7 @@ export default function HistoryDetail() {
         setLoading(false)
       })
     return () => setTearsheet(null)
-  }, [runId, setTearsheet, token])
+  }, [runId, setTearsheet])
 
   return (
     <QuantWorkspace active="charts">
@@ -63,23 +55,7 @@ export default function HistoryDetail() {
         )}
 
         {!loading && !error && tearsheet && (
-          <div className="stack gap-md">
-            <div className="iris-card info-banner">
-              <span className="label">RUN</span><span className="value accent">{tearsheet.run_id.slice(0, 8)}</span>
-              <span className="label">ASSET</span><span className="value">{tearsheet.strategy_spec.asset}</span>
-              <span className="label">PERIOD</span><span className="value">{tearsheet.strategy_spec.start_date} → {tearsheet.strategy_spec.end_date}</span>
-              <span className="label">CAPITAL</span><span className="value">${tearsheet.strategy_spec.initial_capital.toLocaleString()}</span>
-              <span className="label">EXPERT</span><span className="value accent-amber">{tearsheet.expert_type}</span>
-            </div>
-
-            <div className="grid-2">
-              <EquityCurveStandalone />
-              <MetricsGrid />
-            </div>
-
-            <ComparisonTable />
-            <IrisSaysPanel />
-          </div>
+          <TearsheetLayout />
         )}
       </div>
     </QuantWorkspace>

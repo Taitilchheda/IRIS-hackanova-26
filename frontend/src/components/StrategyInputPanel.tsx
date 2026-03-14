@@ -12,10 +12,10 @@ export default function StrategyInputPanel({ compact = false }: { compact?: bool
   const {
     prompt, asset, startDate, endDate, capital,
     commissionBps, slippageBps, maxPositionPct, expertType,
-    appPhase,
+    appPhase, groqApiKey,
     setPrompt, setAsset, setStartDate, setEndDate, setCapital,
     setCommissionBps, setSlippageBps, setMaxPositionPct, setExpertType,
-    runPipeline,
+    runPipeline, runGroqManager, resetGroqHistory,
   } = useIRISStore()
 
   const isRunning = appPhase === 'running'
@@ -23,11 +23,37 @@ export default function StrategyInputPanel({ compact = false }: { compact?: bool
 
   return (
     <div className="strategy-panel" style={{ background: compact ? 'var(--panel)' : 'var(--bg-surface)', border: compact ? '1px solid var(--border2)' : '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
-      <div className="panel-header">
-        <h2 className="font-mono">Strategy Input</h2>
-        <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }} className="font-mono">
-          Describe your trading strategy in plain English
-        </span>
+      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h2 className="font-mono">Strategy Input</h2>
+          <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }} className="font-mono">
+            Describe your trading strategy in plain English
+          </span>
+        </div>
+        {groqApiKey && (
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button 
+              className="iris-btn iris-btn-secondary font-mono" 
+              style={{ fontSize: '0.7rem', padding: '4px 8px' }}
+              onClick={() => runGroqManager()}
+              disabled={appPhase === 'running'}
+            >
+              Smart Parse
+            </button>
+            <button 
+              className="iris-btn iris-btn-secondary font-mono" 
+              style={{ fontSize: '0.7rem', padding: '4px 8px', color: 'var(--accent-red)' }}
+              onClick={() => {
+                resetGroqHistory();
+                setPrompt('');
+                alert('Conversation history cleared.');
+              }}
+              disabled={appPhase === 'running'}
+            >
+              Reset
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Strategy textarea */}

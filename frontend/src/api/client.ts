@@ -8,16 +8,8 @@ const client = axios.create({
   timeout: 180_000,
 })
 
-client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('iris_token')
-  if (token) {
-    config.headers = {
-      ...config.headers,
-      Authorization: `Bearer ${token}`,
-    }
-  }
-  return config
-})
+// Auth interceptor removed as per user request
+client.interceptors.request.use((config) => config)
 
 /* ── TypeScript Interfaces matching backend Pydantic schemas ─────── */
 
@@ -32,6 +24,7 @@ export interface RunRequest {
   max_position_pct: number
   monte_carlo_paths: number
   expert_type?: string
+  groq_api_key?: string
 }
 
 export interface TearsheetMetrics {
@@ -154,37 +147,5 @@ export async function automateStrategy(
 /** Health check */
 export async function healthCheck(): Promise<{ status: string; version: string }> {
   const { data } = await axios.get(`${API_BASE}/health`, { timeout: 5000 })
-  return data
-}
-
-/** Auth */
-export async function login(email: string, password: string): Promise<string> {
-  const params = new URLSearchParams()
-  params.append('username', email)
-  params.append('password', password)
-  const { data } = await axios.post(
-    `${API_BASE}/auth/login`,
-    params,
-    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-  )
-  return data.access_token as string
-}
-
-export async function register(email: string, password: string): Promise<string> {
-  const params = new URLSearchParams()
-  params.append('email', email)
-  params.append('password', password)
-  const { data } = await axios.post(
-    `${API_BASE}/auth/register`,
-    params,
-    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-  )
-  return data.access_token as string
-}
-
-export async function me(): Promise<AuthUser> {
-  const { data } = await axios.get(`${API_BASE}/auth/me`, {
-    headers: { Authorization: `Bearer ${localStorage.getItem('iris_token') || ''}` },
-  })
   return data
 }

@@ -15,6 +15,7 @@ class StrategyType(str, Enum):
     ALPHA_SIGNAL = "alpha_signal"
     FIXED_INCOME = "fixed_income"
     MICROSTRUCTURE = "microstructure"
+    TREND_FOLLOWING = "trend_following"
 
 
 class TradeCondition(BaseModel):
@@ -94,3 +95,4 @@ class RunRequest(BaseModel):
     max_position_pct: float = 1.0
     monte_carlo_paths: int = 1000
     expert_type: Optional[str] = None
+    groq_api_key: Optional[str] = None

@@ -3,20 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Clock, BarChart3, ChevronRight } from 'lucide-react'
 import { useIRISStore } from '../store/irisStore'
-import { useAuthStore } from '../store/authStore'
 import QuantWorkspace from '../components/QuantWorkspace'
 
 export default function History() {
   const { historyItems, historyLoading, loadHistory } = useIRISStore()
-  const { token, hydrate } = useAuthStore()
   const navigate = useNavigate()
 
-  useEffect(() => { hydrate() }, [hydrate])
-  useEffect(() => { if (!token) navigate('/login') }, [token, navigate])
-
   useEffect(() => {
-    if (token) loadHistory()
-  }, [loadHistory, token])
+    loadHistory()
+  }, [loadHistory])
 
   return (
     <QuantWorkspace active="charts">

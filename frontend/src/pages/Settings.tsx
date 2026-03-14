@@ -1,24 +1,17 @@
 import { Settings as SettingsIcon, Save } from 'lucide-react'
 import { useIRISStore, EXPERT_OPTIONS } from '../store/irisStore'
 import type { ExpertType } from '../store/irisStore'
-import { useState, useEffect } from 'react'
-import { useAuthStore } from '../store/authStore'
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import QuantWorkspace from '../components/QuantWorkspace'
 
 export default function Settings() {
   const {
-    capital, commissionBps, slippageBps, maxPositionPct, mcPaths, expertType,
-    setCapital, setCommissionBps, setSlippageBps, setMaxPositionPct, setMcPaths, setExpertType,
+    capital, commissionBps, slippageBps, maxPositionPct, mcPaths, expertType, groqApiKey,
+    setCapital, setCommissionBps, setSlippageBps, setMaxPositionPct, setMcPaths, setExpertType, setGroqApiKey,
     backendAlive,
   } = useIRISStore()
 
-  const { token, hydrate } = useAuthStore()
-  const navigate = useNavigate()
   const [saved, setSaved] = useState(false)
-
-  useEffect(() => { hydrate() }, [hydrate])
-  useEffect(() => { if (!token) navigate('/login') }, [token, navigate])
 
   const handleSave = () => {
     setSaved(true)
@@ -74,6 +67,24 @@ export default function Settings() {
             <Save size={14} />
             {saved ? 'Saved ✓' : 'Save Defaults'}
           </button>
+        </div>
+
+        <div className="iris-card">
+          <h3 className="section-title">API Configuration</h3>
+          <div className="config-grid">
+            <ConfigField label="Groq API Key">
+              <input 
+                className="iris-input font-mono" 
+                type="password" 
+                placeholder="gsk_..." 
+                value={groqApiKey} 
+                onChange={(e) => setGroqApiKey(e.target.value)} 
+              />
+            </ConfigField>
+          </div>
+          <p className="hint" style={{ marginTop: '0.5rem' }}>
+            Required for the Manager Agent (Natural Language Strategy Parsing).
+          </p>
         </div>
 
         <div className="iris-card">

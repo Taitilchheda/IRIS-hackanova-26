@@ -1,32 +1,24 @@
-"""
-GET /tearsheet/{run_id} — retrieves a stored tearsheet.
-GET /tearsheets       — lists all past runs (summary only).
-"""
 from fastapi import APIRouter, HTTPException, Depends
-from sqlmodel import select
+from sqlmodel import select, Session
 from app.utils.logger import get_logger
-from app.models import TearsheetRecord, User
+from app.models import TearsheetRecord
 from app.db import get_session
-from app.api.auth import get_current_user
-from sqlmodel import Session
 
 log = get_logger(__name__)
 router = APIRouter()
 
-
 @router.get("/tearsheet/{run_id}")
-async def get_tearsheet(run_id: str, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+async def get_tearsheet(run_id: str, session: Session = Depends(get_session)):
     """Retrieve a full tearsheet by run ID."""
-    ts = session.exec(select(TearsheetRecord).where(TearsheetRecord.run_id == run_id, TearsheetRecord.user_id == current_user.id)).first()
+    ts = session.exec(select(TearsheetRecord).where(TearsheetRecord.run_id == run_id)).first()
     if ts is None:
         raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found")
     return ts.payload
 
-
 @router.get("/tearsheets")
-async def list_tearsheets(session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
-    """List all past run summaries for the authenticated user."""
-    records = session.exec(select(TearsheetRecord).where(TearsheetRecord.user_id == current_user.id).order_by(TearsheetRecord.created_at.desc())).all()
+async def list_tearsheets(session: Session = Depends(get_session)):
+    """List all past run summaries."""
+    records = session.exec(select(TearsheetRecord).order_by(TearsheetRecord.created_at.desc())).all()
     result = []
     for r in records:
         result.append({

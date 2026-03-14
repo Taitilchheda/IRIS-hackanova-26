@@ -28,6 +28,7 @@ export type ExpertType =
   | 'alpha_signal'
   | 'fixed_income'
   | 'microstructure'
+  | 'trend_following'
 
 export const EXPERT_OPTIONS: { value: ExpertType; label: string }[] = [
   { value: 'risk_analysis', label: 'Risk Analysis' },
@@ -36,6 +37,7 @@ export const EXPERT_OPTIONS: { value: ExpertType; label: string }[] = [
   { value: 'alpha_signal', label: 'Alpha & Signal Research' },
   { value: 'fixed_income', label: 'Fixed Income & Rates' },
   { value: 'microstructure', label: 'Market Microstructure' },
+  { value: 'trend_following', label: 'Trend Following (SMA)' },
 ]
 
 /* ── Store Interface ─────────────────────────────────────────────── */
@@ -73,6 +75,10 @@ interface IRISStore {
   // ── Backend health ──
   backendAlive: boolean
 
+  // ── Groq Integration ──
+  groqApiKey: string
+  groqHistory: { role: 'system' | 'user' | 'assistant'; content: string }[]
+
   // ── Input actions ──
   setPrompt: (p: string) => void
   setAsset: (a: string) => void
@@ -84,6 +90,9 @@ interface IRISStore {
   setMaxPositionPct: (m: number) => void
   setMcPaths: (n: number) => void
   setExpertType: (t: ExpertType) => void
+  setGroqApiKey: (k: string) => void
+  resetGroqHistory: () => void
+  runGroqManager: () => Promise<void>
 
   // ── Pipeline actions ──
   runPipeline: () => Promise<void>
@@ -139,6 +148,9 @@ export const useIRISStore = create<IRISStore>((set, get) => ({
   mcPaths: 1000,
   expertType: 'risk_analysis',
 
+  groqApiKey: localStorage.getItem('iris_groq_key') || '',
+  groqHistory: JSON.parse(localStorage.getItem('iris_groq_history') || '[]'),
+
   appPhase: 'idle',
   error: null,
   tearsheet: null,
@@ -165,6 +177,14 @@ export const useIRISStore = create<IRISStore>((set, get) => ({
   setMaxPositionPct: (m) => set({ maxPositionPct: m }),
   setMcPaths: (n) => set({ mcPaths: n }),
   setExpertType: (t) => set({ expertType: t }),
+  setGroqApiKey: (k) => {
+    localStorage.setItem('iris_groq_key', k)
+    set({ groqApiKey: k })
+  },
+  resetGroqHistory: () => {
+    localStorage.removeItem('iris_groq_history')
+    set({ groqHistory: [] })
+  },
 
   // ── Pipeline ──
   setAgentStatus: (name, status, message) =>
@@ -220,6 +240,7 @@ export const useIRISStore = create<IRISStore>((set, get) => ({
         max_position_pct: state.maxPositionPct / 100,
         monte_carlo_paths: state.mcPaths,
         expert_type: state.expertType,
+        groq_api_key: state.groqApiKey,
       })
 
       setAgent('Trader Strategy', 'done', `Completed in ${tearsheet.trader.elapsed_seconds.toFixed(1)}s`)
@@ -242,6 +263,58 @@ export const useIRISStore = create<IRISStore>((set, get) => ({
         }
       }
       set({ error: message, appPhase: 'error' })
+    }
+  },
+
+  runGroqManager: async () => {
+    const state = get()
+    if (!state.groqApiKey) {
+      set({ error: 'Groq API Key missing. Set it in Settings.' })
+      return
+    }
+    if (!state.prompt.trim()) return
+
+    set({ appPhase: 'running' })
+    const setAgent = get().setAgentStatus
+    setAgent('Manager Agent', 'running', 'Groq is analyzing your strategy...')
+
+    try {
+      const { callManagerAgent } = await import('../api/groq')
+      const { parsed, updatedHistory } = await callManagerAgent(state.prompt, state.groqApiKey, state.groqHistory)
+
+      // Update history
+      localStorage.setItem('iris_groq_history', JSON.stringify(updatedHistory))
+
+      // Update form fields based on parsed JSON
+      const updates: any = {}
+      if (parsed.asset) updates.asset = parsed.asset.toUpperCase()
+      if (parsed.backtest_period?.start) updates.startDate = parsed.backtest_period.start
+      if (parsed.backtest_period?.end) updates.endDate = parsed.backtest_period.end
+
+      // Map expert agent
+      const expertMap: Record<string, ExpertType> = {
+        'risk_analysis': 'risk_analysis',
+        'derivatives_pricing': 'derivatives',
+        'portfolio_construction': 'portfolio',
+        'alpha_signal': 'alpha_signal',
+        'fixed_income': 'fixed_income',
+        'market_microstructure': 'microstructure'
+      }
+      if (parsed.expert_agent_required && expertMap[parsed.expert_agent_required]) {
+        updates.expertType = expertMap[parsed.expert_agent_required]
+      }
+
+      set({
+        ...updates,
+        groqHistory: updatedHistory,
+        appPhase: 'idle', // Ready for user to review or run
+      })
+
+      setAgent('Manager Agent', 'done', parsed.manager_response_to_trader)
+
+    } catch (err: any) {
+      set({ error: err.message, appPhase: 'error' })
+      setAgent('Manager Agent', 'error', err.message)
     }
   },
 

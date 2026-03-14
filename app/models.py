@@ -10,7 +10,7 @@ class User(SQLModel, table=True):
 
 class TearsheetRecord(SQLModel, table=True):
     run_id: str = Field(primary_key=True)
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(default=1) # No longer foreign keyed to User table
     asset: str
     start_date: str
     end_date: str
