@@ -23,7 +23,7 @@ export default function QuantTopbar() {
       </div>
 
       <div className="nav-pills">
-        {pill('/', 'Strategy Lab')}
+        {pill('/', 'Dashboard')}
         {pill('/history', 'History')}
         {pill('/settings', 'Settings')}
       </div>

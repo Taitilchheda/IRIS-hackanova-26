@@ -1,5 +1,6 @@
 import { useIRISStore } from '../store/irisStore'
 import TearsheetLayout from '../components/Tearsheet'
+import StrategyInputPanel from '../components/StrategyInputPanel'
 import { AlertCircle, RotateCcw } from 'lucide-react'
 import QuantWorkspace from '../components/QuantWorkspace'
 import AgentPipeline from '../components/AgentPipeline'
@@ -9,8 +10,12 @@ export default function StrategyLab() {
 
   return (
     <QuantWorkspace>
-      <div className="main-stack">
-        {appPhase === 'error' && error && (
+      <div className="strategy-lab-layout">
+        <div className="strategy-lab-sidebar">
+          <StrategyInputPanel compact={true} />
+        </div>
+        <div className="main-stack">
+          {appPhase === 'error' && error && (
           <div className="iris-card" style={{
             padding: '1rem 1.25rem',
             borderColor: 'rgba(255, 77, 106, 0.3)',
@@ -33,6 +38,7 @@ export default function StrategyLab() {
 
         {appPhase !== 'idle' && <AgentPipeline />}
         {(appPhase === 'complete' || appPhase === 'running') && <TearsheetLayout />}
+        </div>
       </div>
     </QuantWorkspace>
   )

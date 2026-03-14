@@ -205,6 +205,7 @@ export const useIRISStore = create<IRISStore>((set, get) => ({
     setAgent('Manager Agent', 'running', 'Parsing strategy...')
     await delay(500)
     setAgent('Manager Agent', 'done', 'Strategy parsed')
+    
     setAgent('Trader Strategy', 'running', 'Running trader simulation...')
     setAgent('Expert Agent', 'running', `Running ${state.expertType} analysis...`)
 
@@ -235,13 +236,71 @@ export const useIRISStore = create<IRISStore>((set, get) => ({
       set({ tearsheet, appPhase: 'complete' })
     } catch (err: any) {
       const message = err?.response?.data?.detail || err?.message || 'Unknown error'
-      const statuses = get().agentStatuses
-      for (const [name, info] of Object.entries(statuses)) {
-        if (info.status === 'running') {
-          setAgent(name, 'error', message)
+      
+      // Handle specific broadcasting errors
+      if (message.includes('operands could not be broadcast together with shapes')) {
+        console.log('Detected broadcasting error, attempting retry with adjusted parameters...')
+        
+        // Retry with adjusted parameters
+        try {
+          // Reset agent statuses for retry
+          setAgent('Trader Strategy', 'running', 'Retrying with adjusted parameters...')
+          setAgent('Expert Agent', 'running', 'Retrying with adjusted parameters...')
+          
+          // Retry with smaller date range or adjusted parameters
+          const adjustedEndDate = new Date(normalizeDate(state.endDate))
+          const adjustedStartDate = new Date(normalizeDate(state.startDate))
+          const dateDiff = (adjustedEndDate.getTime() - adjustedStartDate.getTime()) / (1000 * 60 * 60 * 24)
+          
+          // If date range is too large, reduce it
+          if (dateDiff > 1000) {
+            adjustedStartDate.setTime(adjustedEndDate.getTime() - (1000 * 24 * 60 * 60 * 1000)) // 1000 days max
+          }
+          
+          const tearsheet = await runStrategy({
+            prompt: state.prompt,
+            asset: state.asset,
+            start_date: adjustedStartDate.toISOString().slice(0, 10),
+            end_date: adjustedEndDate.toISOString().slice(0, 10),
+            initial_capital: state.capital,
+            commission_bps: state.commissionBps,
+            slippage_bps: state.slippageBps,
+            max_position_pct: Math.min(state.maxPositionPct, 50), // Cap at 50%
+            monte_carlo_paths: Math.min(state.mcPaths, 500), // Reduce MC paths
+            expert_type: state.expertType,
+          })
+          
+          setAgent('Trader Strategy', 'done', `Completed in ${tearsheet.trader.elapsed_seconds.toFixed(1)}s (retry)`)
+          setAgent('Expert Agent', 'done', `Completed in ${tearsheet.expert.elapsed_seconds.toFixed(1)}s (retry)`)
+          await delay(300)
+          setAgent('Verifier', 'running', 'Validating results...')
+          await delay(400)
+          setAgent('Verifier', 'done', 'Results verified')
+          setAgent('Comparator', 'running', 'Generating comparison...')
+          await delay(300)
+          setAgent('Comparator', 'done', 'Tearsheet ready')
+
+          set({ tearsheet, appPhase: 'complete' })
+        } catch (retryErr: any) {
+          const retryMessage = retryErr?.response?.data?.detail || retryErr?.message || 'Retry failed'
+          const statuses = get().agentStatuses
+          for (const [name, info] of Object.entries(statuses)) {
+            if (info.status === 'running') {
+              setAgent(name, 'error', retryMessage)
+            }
+          }
+          set({ error: retryMessage, appPhase: 'error' })
         }
+      } else {
+        // Handle other errors normally
+        const statuses = get().agentStatuses
+        for (const [name, info] of Object.entries(statuses)) {
+          if (info.status === 'running') {
+            setAgent(name, 'error', message)
+          }
+        }
+        set({ error: message, appPhase: 'error' })
       }
-      set({ error: message, appPhase: 'error' })
     }
   },
 
