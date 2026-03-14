@@ -27,6 +27,7 @@ ENV/
 
 # Env vars
 .env
+.env.example
 
 # IDEs
 .idea/

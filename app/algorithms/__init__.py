@@ -6,11 +6,11 @@ from app.algorithms.alpha.pairs_trading import cointegration_test, spread_zscore
 
 # Fixed income algorithms
 from app.algorithms.fixed_income.duration_convexity import (
-    price_from_yield, 
-    modified_duration, 
+    price_from_yield,
+    modified_duration,
     dv01,
-    convexity, 
-    bond_price_change
+    convexity,
+    bond_price_change,
 )
 from app.algorithms.fixed_income.short_rate_models import VasicekModel, CIRModel
 
@@ -28,30 +28,30 @@ from app.algorithms.pricing.binomial_tree import binomial_price
 
 # Risk management algorithms
 from app.algorithms.risk.garch import GARCHModel
-from app.algorithms.risk.monte_carlo import MonteCarloSimulator
+from app.algorithms.risk.monte_carlo import simulate_gbm_paths, value_at_risk, cvar
 
 __all__ = [
     # Alpha algorithms
     "KalmanHedgeFilter",
     "cointegration_test",
     "spread_zscore",
-    
+
     # Fixed income algorithms
     "price_from_yield",
     "modified_duration",
-    "dv01", 
+    "dv01",
     "convexity",
     "bond_price_change",
-    "VasicekModel", 
+    "VasicekModel",
     "CIRModel",
-    
+
     # Microstructure algorithms
     "RegimeHMM",
     "vwap",
     "twap",
     "execution_schedule",
     "arrival_cost",
-    
+
     # Portfolio algorithms
     "efficient_frontier",
     "max_sharpe_weights",
@@ -59,14 +59,16 @@ __all__ = [
     "market_implied_returns",
     "black_litterman_returns",
     "black_litterman_weights",
-    
+
     # Pricing algorithms
     "bsm_price",
     "bsm_greeks",
     "implied_volatility",
     "binomial_price",
-    
+
     # Risk algorithms
     "GARCHModel",
-    "MonteCarloSimulator"
+    "simulate_gbm_paths",
+    "value_at_risk",
+    "cvar",
 ]

@@ -60,16 +60,16 @@ class RiskAnalysisAgent(BaseExpertAgent):
             n_days = len(close)
             n_paths = 200  # reduced for speed; use 10k in prod
 
+            # Simulate price paths, then scale to equity using initial capital
             paths = _simulate_gbm_paths(
-                S0=spec.initial_capital,
+                S0=float(close[0]),
                 mu=mu / 252,
                 sigma=sigma / np.sqrt(252),
                 n_days=n_days,
                 n_paths=n_paths
             )
-            # Use the median path as the "equity curve"
             median_path = np.median(paths, axis=0)
-            equity_curve = [round(float(v), 2) for v in median_path[:n_days]]
+            equity_curve = [round(float(spec.initial_capital * (v / median_path[0])), 2) for v in median_path[:n_days]]
             dates = [str(d.date()) for d in df.index[:n_days]]
 
             # Sample paths for UI visualization

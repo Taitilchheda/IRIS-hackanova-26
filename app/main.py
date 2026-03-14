@@ -5,11 +5,13 @@ from app.api.strategy import router as strategy_router
 from app.api.backtest import router as backtest_router
 from app.api.tearsheet import router as tearsheet_router
 from app.api.automator import router as automator_router
+from app.api.auth import router as auth_router, create_default_admin
+from app.db import init_db, get_session
 
 app = FastAPI(
     title="IRIS — Intelligent Reasoning & Inferential Simulator",
     description="Agentic AI Backtesting Tool",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 app.add_middleware(
@@ -20,7 +22,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Initialize database tables and seed admin at startup
+@app.on_event("startup")
+def on_startup():
+    init_db()
+    with get_session() as session:
+        create_default_admin(session)
+
 # ── API routes ───────────────────────────────────────────────────────────────
+app.include_router(auth_router)
 app.include_router(strategy_router, prefix="/api", tags=["Strategy"])
 app.include_router(backtest_router, prefix="/api", tags=["Backtest"])
 app.include_router(tearsheet_router, prefix="/api", tags=["Tearsheet"])
@@ -29,7 +39,7 @@ app.include_router(automator_router, prefix="/api", tags=["Automator"])
 
 @app.get("/health", tags=["Health"])
 async def health():
-    return {"status": "ok", "version": "0.1.0"}
+    return {"status": "ok", "version": "0.2.0"}
 
 
 if __name__ == "__main__":

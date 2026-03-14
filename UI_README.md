@@ -41,7 +41,7 @@
 
 | Layer | Technology | Reason |
 |---|---|---|
-| Framework | **React 18** + TypeScript | Component model, type safety |
+| Framework | **React 18** + JavaScript | Component model, type safety |
 | Build | **Vite** | Fast HMR, lean bundle |
 | Styling | **Tailwind CSS** + CSS Variables | Utility-first + design token system |
 | Charts | **Recharts** | Composable, React-native charting |

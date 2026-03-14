@@ -27,8 +27,8 @@ from app.agents.expert.derivatives_pricing import DerivativesPricingAgent
 from app.agents.expert.fixed_income import FixedIncomeAgent
 from app.agents.expert.microstructure import MicrostructureAgent
 from app.utils.logger import get_logger, new_run_id
-
-import anthropic
+from app.config import settings
+import httpx
 
 log = get_logger(__name__)
 
@@ -51,21 +51,51 @@ def _load_prompt(name: str) -> str:
 
 
 def _call_llm(system: str, user: str) -> str:
-    try:
-        key = os.getenv("ANTHROPIC_API_KEY", "")
-        if not key:
-            return ""
-        client = anthropic.Anthropic(api_key=key)
-        msg = client.messages.create(
-            model="claude-3-5-haiku-20241022",
-            max_tokens=400,
-            system=system,
-            messages=[{"role": "user", "content": user}],
-        )
-        return msg.content[0].text.strip()
-    except Exception as e:
-        log.warning(f"LLM narrative failed: {e}")
-        return ""
+    """Try Anthropic first, then OpenRouter (OpenAI-compatible), else return ''."""
+    # Anthropic
+    if settings.anthropic_api_key:
+        try:
+            import anthropic
+            client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+            msg = client.messages.create(
+                model="claude-3-5-haiku-20241022",
+                max_tokens=400,
+                system=system,
+                messages=[{"role": "user", "content": user}],
+            )
+            return msg.content[0].text.strip()
+        except Exception as e:
+            log.warning(f"LLM narrative via Anthropic failed: {e}")
+
+    # OpenRouter (free-tier friendly; choose model via env)
+    if settings.openrouter_api_key:
+        try:
+            headers = {
+                "Authorization": f"Bearer {settings.openrouter_api_key}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "model": settings.openrouter_model or "gpt-3.5-turbo",
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                "max_tokens": 400,
+                "temperature": 0.3,
+            }
+            resp = httpx.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=20.0,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return data["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            log.warning(f"LLM narrative via OpenRouter failed: {e}")
+
+    return ""
 
 
 class ManagerAgent:
@@ -123,6 +153,12 @@ class ManagerAgent:
             expert_future = executor.submit(expert_agent.run, spec)
             trader_result = trader_future.result()
             expert_result = expert_future.result()
+
+        # Fail fast if any agent errored so UI surfaces the issue
+        if trader_result.error:
+            raise ValueError(f"Trader agent failed: {trader_result.error}")
+        if expert_result.error:
+            raise ValueError(f"Expert agent failed: {expert_result.error}")
 
         log.info(f"Trader done in {trader_result.elapsed_seconds}s, "
                  f"Expert done in {expert_result.elapsed_seconds}s")
