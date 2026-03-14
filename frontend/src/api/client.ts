@@ -8,17 +8,6 @@ const client = axios.create({
   timeout: 180_000,
 })
 
-client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('iris_token')
-  if (token) {
-    config.headers = {
-      ...config.headers,
-      Authorization: `Bearer ${token}`,
-    }
-  }
-  return config
-})
-
 /* ── TypeScript Interfaces matching backend Pydantic schemas ─────── */
 
 export interface RunRequest {
@@ -110,7 +99,7 @@ export interface AutomateResult {
   error?: string
 }
 
-export interface AuthUser { email: string; created_at: string }
+
 
 /* ── API Functions ───────────────────────────────────────────────── */
 
@@ -157,34 +146,3 @@ export async function healthCheck(): Promise<{ status: string; version: string }
   return data
 }
 
-/** Auth */
-export async function login(email: string, password: string): Promise<string> {
-  const params = new URLSearchParams()
-  params.append('username', email)
-  params.append('password', password)
-  const { data } = await axios.post(
-    `${API_BASE}/auth/login`,
-    params,
-    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-  )
-  return data.access_token as string
-}
-
-export async function register(email: string, password: string): Promise<string> {
-  const params = new URLSearchParams()
-  params.append('email', email)
-  params.append('password', password)
-  const { data } = await axios.post(
-    `${API_BASE}/auth/register`,
-    params,
-    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-  )
-  return data.access_token as string
-}
-
-export async function me(): Promise<AuthUser> {
-  const { data } = await axios.get(`${API_BASE}/auth/me`, {
-    headers: { Authorization: `Bearer ${localStorage.getItem('iris_token') || ''}` },
-  })
-  return data
-}

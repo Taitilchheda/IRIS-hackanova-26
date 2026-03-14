@@ -33,8 +33,11 @@ def test_call_intrinsic_floor():
 
 
 def test_put_intrinsic_floor():
+    """Deep ITM European put price >= discounted intrinsic K*e^(-rT) - S."""
     deep_put = bsm_price(50, 100, T, r, sigma, "put")
-    assert deep_put >= max(0, 100 - 50)
+    # European put lower bound is K*exp(-rT) - S, not K - S
+    discounted_intrinsic = max(0, 100 * math.exp(-r * T) - 50)
+    assert deep_put >= discounted_intrinsic - 1e-6
 
 
 def test_call_price_zero_T():
