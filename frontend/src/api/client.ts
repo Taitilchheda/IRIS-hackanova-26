@@ -182,9 +182,9 @@ export async function register(email: string, password: string): Promise<string>
   return data.access_token as string
 }
 
-export async function me(): Promise<AuthUser> {
+export async function me(token?: string): Promise<AuthUser> {
   const { data } = await axios.get(`${API_BASE}/auth/me`, {
-    headers: { Authorization: `Bearer ${localStorage.getItem('iris_token') || ''}` },
+    headers: { Authorization: `Bearer ${token || localStorage.getItem('iris_token') || ''}` },
   })
   return data
 }

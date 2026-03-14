@@ -22,7 +22,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     const token = localStorage.getItem('iris_token')
     if (!token) return
     try {
-      const user = await apiMe()
+      const user = await apiMe(token)
       set({ user, token })
     } catch {
       localStorage.removeItem('iris_token')
@@ -35,7 +35,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const token = await apiLogin(email, password)
       localStorage.setItem('iris_token', token)
-      const user = await apiMe()
+      const user = await apiMe(token)
       set({ user, token, loading: false })
     } catch (err: any) {
       set({ error: err?.response?.data?.detail || 'Login failed', loading: false })
@@ -48,7 +48,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const token = await apiLogin(email, password)
       localStorage.setItem('iris_token', token)
-      const user = await apiMe()
+      const user = await apiMe(token)
       set({ user, token, loading: false })
     } catch (err: any) {
       set({ error: err?.response?.data?.detail || 'Signup failed', loading: false })

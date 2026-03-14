@@ -22,7 +22,6 @@ export default function Login() {
     e.preventDefault()
     if (isSignup) await register(email, password)
     else await login(email, password)
-    if (!error) navigate('/')
   }
 
   return (
