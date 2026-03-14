@@ -33,10 +33,10 @@ export default function HistoryDetail() {
         setLoading(false)
       })
     return () => setTearsheet(null)
-  }, [runId, setTearsheet, token])
+  }, [runId, setTearsheet])
 
   return (
-    <QuantWorkspace active="charts">
+    <QuantWorkspace>
       <div className="main-stack">
         <button onClick={() => navigate('/history')} className="iris-btn iris-btn-secondary font-mono" style={{ width: 'fit-content' }}>
           <ArrowLeft size={16} /> Back to History

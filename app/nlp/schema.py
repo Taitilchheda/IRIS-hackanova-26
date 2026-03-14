@@ -2,9 +2,10 @@
 Pydantic models: StrategySpec, TradeCondition, AgentResult,
 Tearsheet, RunRequest, VerifierResult
 """
+
 from __future__ import annotations
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from enum import Enum
 
 
@@ -15,6 +16,7 @@ class StrategyType(str, Enum):
     ALPHA_SIGNAL = "alpha_signal"
     FIXED_INCOME = "fixed_income"
     MICROSTRUCTURE = "microstructure"
+    TREND_FOLLOWING = "trend_following"
 
 
 class TradeCondition(BaseModel):
@@ -47,7 +49,7 @@ class AgentResult(BaseModel):
     dates: List[str] = []
     trade_log: List[Dict[str, Any]] = []
     metrics: Dict[str, float] = {}
-    paths: List[List[float]] = []  # Supports Monte Carlo, Walk-forward, etc.
+    paths: List[List[float]] = []  # Monte Carlo / walk-forward support
     error: Optional[str] = None
     elapsed_seconds: float = 0.0
 
@@ -94,3 +96,4 @@ class RunRequest(BaseModel):
     max_position_pct: float = 1.0
     monte_carlo_paths: int = 1000
     expert_type: Optional[str] = None
+    groq_api_key: Optional[str] = None

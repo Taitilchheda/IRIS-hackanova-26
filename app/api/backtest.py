@@ -1,8 +1,11 @@
 """
-POST /backtest — triggers a backtest run given a strategy spec dict.
+POST /backtest — triggers a full IRIS backtest pipeline.
+parse → trader + expert → verify → compare → narrate
 """
+
 from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session
+
 from app.nlp.schema import RunRequest
 from app.agents.manager import ManagerAgent
 from app.utils.logger import get_logger
@@ -18,11 +21,16 @@ _manager = ManagerAgent()
 
 
 @router.post("/backtest", response_model=None)
-async def run_backtest(req: RunRequest, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+async def run_backtest(
+    req: RunRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
     """
-    Run a full backtest pipeline: parse → trader + expert → verify → compare → narrate.
-    Identical to /run but lives under /backtest for semantic clarity.
+    Run a full backtest pipeline:
+    parse → trader + expert → verify → compare → narrate.
     """
+
     try:
         ts = _manager.run(
             prompt=req.prompt,
@@ -35,12 +43,27 @@ async def run_backtest(req: RunRequest, session: Session = Depends(get_session),
             max_position_pct=req.max_position_pct,
             expert_type=req.expert_type,
         )
+
         result = ts.model_dump()
-        _persist_tearsheet(result)
+
+        # Persist tearsheet (support both implementations)
+        try:
+            _persist_tearsheet(session, result)
+        except TypeError:
+            _persist_tearsheet(result)
+
         return result
+
     except ValueError as e:
         log.error(f"/backtest value error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
     except Exception as e:
         log.error(f"/backtest error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail='Internal error during backtest. Check backend logs.')
+        raise HTTPException(
+            status_code=500,
+            detail="Internal error during backtest. Check backend logs."
+        )

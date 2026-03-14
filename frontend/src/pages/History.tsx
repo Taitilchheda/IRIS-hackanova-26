@@ -14,7 +14,7 @@ export default function History() {
   }, [loadHistory])
 
   return (
-    <QuantWorkspace active="charts">
+    <QuantWorkspace>
       <div className="main-stack">
         <div className="card-header">
           <Clock size={18} color="var(--teal)" />

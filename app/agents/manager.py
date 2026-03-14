@@ -26,6 +26,7 @@ from app.agents.expert.portfolio_construction import PortfolioAgent
 from app.agents.expert.derivatives_pricing import DerivativesPricingAgent
 from app.agents.expert.fixed_income import FixedIncomeAgent
 from app.agents.expert.microstructure import MicrostructureAgent
+from app.agents.expert.trend_following import TrendFollowingAgent
 from app.utils.logger import get_logger, new_run_id
 from app.config import settings
 import httpx
@@ -43,6 +44,8 @@ EXPERT_MAP = {
     StrategyType.MICROSTRUCTURE: MicrostructureAgent,
 }
 
+DEFAULT_EXPERT = TrendFollowingAgent
+
 PROMPT_DIR = Path(__file__).parent.parent / "nlp" / "prompts"
 
 
@@ -50,30 +53,73 @@ def _load_prompt(name: str) -> str:
     return (PROMPT_DIR / name).read_text(encoding="utf-8")
 
 
-def _call_llm(system: str, user: str) -> str:
-    """Try Anthropic first, then OpenRouter (OpenAI-compatible), else return ''."""
-    # Anthropic
+def _call_llm(system: str, user: str, groq_api_key: str | None = None) -> str:
+    """
+    LLM priority order:
+    1. Groq (if key provided)
+    2. Anthropic
+    3. OpenRouter
+    """
+
+    # ---------- GROQ ----------
+    if groq_api_key:
+        try:
+            headers = {
+                "Authorization": f"Bearer {groq_api_key}",
+                "Content-Type": "application/json",
+            }
+
+            payload = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                "max_tokens": 500,
+                "temperature": 0.3,
+            }
+
+            resp = httpx.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=25.0,
+            )
+
+            resp.raise_for_status()
+            data = resp.json()
+            return data["choices"][0]["message"]["content"].strip()
+
+        except Exception as e:
+            log.warning(f"Groq narrative failed: {e}")
+
+    # ---------- ANTHROPIC ----------
     if settings.anthropic_api_key:
         try:
             import anthropic
+
             client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
             msg = client.messages.create(
                 model="claude-3-5-haiku-20241022",
                 max_tokens=400,
                 system=system,
                 messages=[{"role": "user", "content": user}],
             )
-            return msg.content[0].text.strip()
-        except Exception as e:
-            log.warning(f"LLM narrative via Anthropic failed: {e}")
 
-    # OpenRouter (free-tier friendly; choose model via env)
+            return msg.content[0].text.strip()
+
+        except Exception as e:
+            log.warning(f"Anthropic narrative failed: {e}")
+
+    # ---------- OPENROUTER ----------
     if settings.openrouter_api_key:
         try:
             headers = {
                 "Authorization": f"Bearer {settings.openrouter_api_key}",
                 "Content-Type": "application/json",
             }
+
             payload = {
                 "model": settings.openrouter_model or "gpt-3.5-turbo",
                 "messages": [
@@ -83,22 +129,26 @@ def _call_llm(system: str, user: str) -> str:
                 "max_tokens": 400,
                 "temperature": 0.3,
             }
+
             resp = httpx.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 json=payload,
                 headers=headers,
                 timeout=20.0,
             )
+
             resp.raise_for_status()
             data = resp.json()
             return data["choices"][0]["message"]["content"].strip()
+
         except Exception as e:
-            log.warning(f"LLM narrative via OpenRouter failed: {e}")
+            log.warning(f"OpenRouter narrative failed: {e}")
 
     return ""
 
 
 class ManagerAgent:
+
     def __init__(self):
         self.parser = StrategyParser()
         self.verifier = VerifierAgent()
@@ -116,12 +166,15 @@ class ManagerAgent:
         slippage_bps: float = 5.0,
         max_position_pct: float = 1.0,
         expert_type: str | None = None,
+        groq_api_key: str | None = None,
     ) -> Tearsheet:
+
         run_id = new_run_id()
         log.info(f"=== IRIS Run {run_id} | {asset} | {start_date}→{end_date} ===")
+
         t0 = time.time()
 
-        # 1. Parse strategy
+        # ---------- 1. Parse strategy ----------
         spec = self.parser.parse(
             prompt=prompt,
             asset=asset,
@@ -140,57 +193,93 @@ class ManagerAgent:
             except ValueError:
                 pass
 
-        # 2. Select expert
-        expert_cls = EXPERT_MAP.get(spec.strategy_type, AlphaSignalAgent)
+        # ---------- 2. Select expert ----------
+        expert_cls = EXPERT_MAP.get(spec.strategy_type, DEFAULT_EXPERT)
+
         expert_agent = expert_cls()
         trader_agent = TraderStrategyAgent()
 
         log.info(f"Expert selected: {expert_agent.name}")
 
-        # 3. Run trader + expert in parallel (using threads for sync code)
+        # ---------- 3. Parallel execution ----------
         with ThreadPoolExecutor(max_workers=2) as executor:
+
             trader_future = executor.submit(trader_agent.run, spec)
             expert_future = executor.submit(expert_agent.run, spec)
+
             trader_result = trader_future.result()
             expert_result = expert_future.result()
 
-        # Fail fast if any agent errored so UI surfaces the issue
         if trader_result.error:
             raise ValueError(f"Trader agent failed: {trader_result.error}")
+
         if expert_result.error:
             raise ValueError(f"Expert agent failed: {expert_result.error}")
 
-        log.info(f"Trader done in {trader_result.elapsed_seconds}s, "
-                 f"Expert done in {expert_result.elapsed_seconds}s")
+        log.info(
+            f"Trader done in {trader_result.elapsed_seconds}s, "
+            f"Expert done in {expert_result.elapsed_seconds}s"
+        )
 
-        # 4. Verify (with retry)
+        # ---------- 4. Verification ----------
         for attempt in range(MAX_RETRIES):
-            verification = self.verifier.verify(trader_result, expert_result, spec)
+
+            verification = self.verifier.verify(
+                trader_result,
+                expert_result,
+                spec
+            )
+
             if verification.ok:
                 break
-            log.warning(f"Verification failed (attempt {attempt + 1}): {verification.issues}")
+
+            log.warning(
+                f"Verification failed (attempt {attempt + 1}): {verification.issues}"
+            )
+
             if verification.agent_to_retry == trader_agent.name:
                 trader_result = trader_agent.run(spec)
+
             elif verification.agent_to_retry == expert_agent.name:
                 expert_result = expert_agent.run(spec)
+
             else:
-                break  # Can't recover
+                break
 
-        # 5. Compare
-        tearsheet = self.comparator.compare(trader_result, expert_result, spec, run_id)
+        # ---------- 5. Comparator ----------
+        tearsheet = self.comparator.compare(
+            trader_result,
+            expert_result,
+            spec,
+            run_id
+        )
 
-        # 6. Narrate with LLM (best effort)
-        narrative = self._narrate(tearsheet)
+        # ---------- 6. Narration ----------
+        narrative = self._narrate(
+            tearsheet,
+            groq_api_key
+        )
+
         tearsheet.narrative = narrative
 
-        log.info(f"=== Run {run_id} complete in {round(time.time() - t0, 2)}s ===")
+        log.info(
+            f"=== Run {run_id} complete in {round(time.time() - t0, 2)}s ==="
+        )
+
         return tearsheet
 
-    def _narrate(self, ts: Tearsheet) -> str:
+    def _narrate(
+        self,
+        ts: Tearsheet,
+        groq_api_key: str | None = None
+    ) -> str:
+
         system = _load_prompt("narrate_tearsheet.txt")
+
         tm = ts.trader_metrics
         em = ts.expert_metrics
         bm = ts.benchmark_metrics
+
         user = (
             f"Trader: CAGR={tm.cagr:.1%}, Sharpe={tm.sharpe:.2f}, "
             f"MaxDD={tm.max_drawdown:.1%}, WinRate={tm.win_rate:.1%}, "
@@ -200,17 +289,25 @@ class ManagerAgent:
             f"SPY Benchmark: CAGR={bm.cagr:.1%}, Sharpe={bm.sharpe:.2f}\n"
             f"Strategy: {ts.strategy_spec.parsed_rules_text}"
         )
-        narrative = _call_llm(system, user)
+
+        narrative = _call_llm(system, user, groq_api_key)
+
         if not narrative:
-            # Fallback narrative
+
             narrative = (
                 f"Your strategy returned {tm.total_return:.1%} total "
-                f"(CAGR {tm.cagr:.1%}, Sharpe {tm.sharpe:.2f}, max drawdown {tm.max_drawdown:.1%}). "
-                f"The {ts.expert_type} expert achieved CAGR {em.cagr:.1%} with Sharpe {em.sharpe:.2f}. "
+                f"(CAGR {tm.cagr:.1%}, Sharpe {tm.sharpe:.2f}, "
+                f"max drawdown {tm.max_drawdown:.1%}). "
+                f"The {ts.expert_type} expert achieved "
+                f"CAGR {em.cagr:.1%} with Sharpe {em.sharpe:.2f}. "
                 f"SPY benchmark: CAGR {bm.cagr:.1%}. "
-                + ("Automate the expert strategy." if em.sharpe > tm.sharpe
-                   else "Your strategy outperforms — consider automating it.")
+                + (
+                    "Automate the expert strategy."
+                    if em.sharpe > tm.sharpe
+                    else "Your strategy outperforms — consider automating it."
+                )
             )
+
         return narrative
 
     def deploy(self, tearsheet: Tearsheet, use_expert: bool = False) -> dict:

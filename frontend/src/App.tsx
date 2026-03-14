@@ -1,6 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
 import { useEffect } from 'react'
-import Navbar from './components/Navbar'
 import StrategyLab from './pages/StrategyLab'
 import History from './pages/History'
 import HistoryDetail from './pages/HistoryDetail'
@@ -21,7 +20,6 @@ export default function App() {
 
   return (
     <>
-      <Navbar />
       <main style={{ flex: 1, paddingBottom: '3rem' }}>
         <Routes>
           <Route path="/" element={<StrategyLab />} />

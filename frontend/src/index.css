@@ -52,13 +52,8 @@ html, body { margin:0; width:100%; height:100%; background:var(--bg); color:var(
 /* Strategy Lab Layout */
 .strategy-lab-layout {
   display: flex;
-  gap: 1.5rem;
+  gap: 1rem;
   height: 100%;
-}
-
-.strategy-lab-sidebar {
-  width: 380px;
-  flex-shrink: 0;
 }
 
 .main-stack {
@@ -68,15 +63,47 @@ html, body { margin:0; width:100%; height:100%; background:var(--bg); color:var(
   gap: 1rem;
 }
 
-@media (max-width: 1024px) {
+.strategy-lab-sidebar {
+  width: 380px;
+  flex-shrink: 0;
+}
+
+.right-sidebar {
+  width: 320px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1400px) {
+  .strategy-lab-sidebar {
+    width: 340px;
+  }
+  
+  .right-sidebar {
+    width: 280px;
+  }
+}
+
+@media (max-width: 1200px) {
   .strategy-lab-layout {
     flex-direction: column;
   }
   
-  .strategy-lab-sidebar {
+  .strategy-lab-sidebar,
+  .right-sidebar {
     width: 100%;
   }
 }
+
+/* RightPanel Colors */
+.text-green { color: #1ed98a; }
+.text-red { color: #ff4466; }
+.text-amber { color: #f0a500; }
+.text-orange { color: #ff8c00; }
+.text-blue { color: #4f9eff; }
+.text-purple { color: #a78bfa; }
+.bg-blue { background-color: #4f9eff; }
+.bg-purple { background-color: #a78bfa; }
+.bg-amber { background-color: #f0a500; }
 
 @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.7)} }
 

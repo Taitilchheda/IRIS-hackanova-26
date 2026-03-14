@@ -19,7 +19,7 @@ export default function Settings() {
   }
 
   return (
-    <QuantWorkspace active="settings">
+    <QuantWorkspace>
       <div className="main-stack">
         <div className="card-header">
           <SettingsIcon size={18} color="var(--teal)" />
