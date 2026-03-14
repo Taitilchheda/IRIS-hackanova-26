@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { login as apiLogin, me as apiMe } from '../api/client'
 
 interface AuthState {
   user: { email: string } | null
@@ -11,18 +12,12 @@ interface AuthState {
   hydrate: () => Promise<void>
 }
 
-export const useAuthStore = create<AuthState>(() => ({
-  user: { email: 'admin@iris.local' },
+export const useAuthStore = create<AuthState>((set) => ({
+  user: null,
   loading: false,
   error: null,
-  token: 'dummy-token',
+  token: null,
 
-<<<<<<< HEAD
-  hydrate: async () => {},
-  login: async () => {},
-  register: async () => {},
-  logout: () => {},
-=======
   hydrate: async () => {
     const token = localStorage.getItem('iris_token')
     if (!token) return
@@ -64,5 +59,4 @@ export const useAuthStore = create<AuthState>(() => ({
     localStorage.removeItem('iris_token')
     set({ user: null, token: null })
   },
->>>>>>> 716f20677e472710adb249a9598b86079449c19e
 }))

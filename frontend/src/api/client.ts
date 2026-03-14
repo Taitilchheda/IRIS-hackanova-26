@@ -99,6 +99,10 @@ export interface AutomateResult {
   error?: string
 }
 
+export interface AuthUser {
+  email: string
+}
+
 
 
 /* ── API Functions ───────────────────────────────────────────────── */
@@ -146,8 +150,6 @@ export async function healthCheck(): Promise<{ status: string; version: string }
   return data
 }
 
-<<<<<<< HEAD
-=======
 /** Auth */
 export async function login(email: string, password: string): Promise<string> {
   const params = new URLSearchParams()
@@ -179,4 +181,3 @@ export async function me(token?: string): Promise<AuthUser> {
   })
   return data
 }
->>>>>>> 716f20677e472710adb249a9598b86079449c19e
