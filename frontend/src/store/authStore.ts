@@ -17,8 +17,52 @@ export const useAuthStore = create<AuthState>(() => ({
   error: null,
   token: 'dummy-token',
 
+<<<<<<< HEAD
   hydrate: async () => {},
   login: async () => {},
   register: async () => {},
   logout: () => {},
+=======
+  hydrate: async () => {
+    const token = localStorage.getItem('iris_token')
+    if (!token) return
+    try {
+      const user = await apiMe(token)
+      set({ user, token })
+    } catch {
+      localStorage.removeItem('iris_token')
+      set({ user: null, token: null })
+    }
+  },
+
+  login: async (email, password) => {
+    set({ loading: true, error: null })
+    try {
+      const token = await apiLogin(email, password)
+      localStorage.setItem('iris_token', token)
+      const user = await apiMe(token)
+      set({ user, token, loading: false })
+    } catch (err: any) {
+      set({ error: err?.response?.data?.detail || 'Login failed', loading: false })
+    }
+  },
+
+  register: async (email, password) => {
+    // Registration just validates the fixed admin creds via login
+    set({ loading: true, error: null })
+    try {
+      const token = await apiLogin(email, password)
+      localStorage.setItem('iris_token', token)
+      const user = await apiMe(token)
+      set({ user, token, loading: false })
+    } catch (err: any) {
+      set({ error: err?.response?.data?.detail || 'Signup failed', loading: false })
+    }
+  },
+
+  logout: () => {
+    localStorage.removeItem('iris_token')
+    set({ user: null, token: null })
+  },
+>>>>>>> 716f20677e472710adb249a9598b86079449c19e
 }))
