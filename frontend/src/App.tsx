@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import { useEffect } from 'react'
+import TopNavigation from './components/TopNavigation'
 import StrategyLab from './pages/StrategyLab'
 import History from './pages/History'
 import HistoryDetail from './pages/HistoryDetail'
@@ -20,6 +21,7 @@ export default function App() {
 
   return (
     <>
+      <TopNavigation />
       <main style={{ flex: 1, paddingBottom: '3rem' }}>
         <Routes>
           <Route path="/" element={<StrategyLab />} />

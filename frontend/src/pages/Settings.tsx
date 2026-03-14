@@ -1,4 +1,4 @@
-import { Settings as SettingsIcon, Save } from 'lucide-react'
+import { Settings as SettingsIcon, Save, User, Mail, Calendar, Shield } from 'lucide-react'
 import { useIRISStore, EXPERT_OPTIONS } from '../store/irisStore'
 import type { ExpertType } from '../store/irisStore'
 import { useState } from 'react'
@@ -34,6 +34,36 @@ export default function Settings() {
               Backend {backendAlive ? 'Connected' : 'Disconnected'}
             </span>
             <span className="hint">(http://localhost:8000)</span>
+          </div>
+        </div>
+
+        <div className="iris-card">
+          <h3 className="section-title">User Profile</h3>
+          <div className="user-profile">
+            <div className="user-avatar-large">
+              <User size={24} />
+            </div>
+            <div className="user-details">
+              <div className="user-info-row">
+                <User size={14} className="info-icon" />
+                <div>
+                  <div className="user-name-large">John Doe</div>
+                  <div className="user-role">Quantitative Analyst</div>
+                </div>
+              </div>
+              <div className="user-info-row">
+                <Mail size={14} className="info-icon" />
+                <span className="user-email-large">john.doe@iris.local</span>
+              </div>
+              <div className="user-info-row">
+                <Calendar size={14} className="info-icon" />
+                <span className="user-joined">Joined March 2024</span>
+              </div>
+              <div className="user-info-row">
+                <Shield size={14} className="info-icon" />
+                <span className="user-plan">Premium Plan</span>
+              </div>
+            </div>
           </div>
         </div>
 
