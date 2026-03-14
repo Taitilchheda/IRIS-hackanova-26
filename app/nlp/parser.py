@@ -95,7 +95,7 @@ def _rule_based_parse(prompt: str, asset: str) -> dict:
         })
 
     # Detect strategy type
-    if any(w in prompt_lower for w in ['risk', 'monte carlo', 'var', 'drawdown']):
+    if any(w in prompt_lower for w in ['risk', 'monte carlo', 'var', 'drawdown']) or 'risk' in prompt_lower:
         strategy_type = "risk_analysis"
     elif any(w in prompt_lower for w in ['option', 'call', 'put', 'greek', 'delta']):
         strategy_type = "derivatives"

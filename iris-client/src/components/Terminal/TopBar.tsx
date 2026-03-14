@@ -39,6 +39,8 @@ export function TopBar({ activeTab, onTabChange }: TopBarProps) {
   }
 
   const formatMarketValue = (symbol: string, data: MarketData) => {
+    if (!data) return 'Loading...'
+    
     switch (symbol) {
       case 'VIX':
         return data.price.toFixed(2)
@@ -54,12 +56,11 @@ export function TopBar({ activeTab, onTabChange }: TopBarProps) {
   const marketStats = defaultSymbols.map(symbol => {
     const data = marketDataMap.get(symbol)
     if (!data) {
-      // Fallback data for development
       return {
         symbol,
-        value: symbol === 'VIX' ? '18.32' : symbol === 'SPY' ? '+0.84%' : symbol === 'USD/JPY' ? '148.92' : '$213.47',
-        change: symbol === 'VIX' ? -0.15 : symbol === 'SPY' ? 0.84 : symbol === 'USD/JPY' ? 0.12 : 2.34,
-        changePercent: symbol === 'VIX' ? -0.81 : symbol === 'SPY' ? 0.84 : symbol === 'USD/JPY' ? 0.08 : 1.11
+        value: 'Loading...',
+        change: 0,
+        changePercent: 0
       }
     }
 

@@ -32,7 +32,7 @@ def _garch_vol_forecast(returns: np.ndarray, horizon: int = 1) -> float:
 
 def _simulate_gbm_paths(S0: float, mu: float, sigma: float,
                          n_days: int, n_paths: int, seed: int = 42) -> np.ndarray:
-    """Simulate GBM paths. Returns array of shape (n_paths, n_days)."""
+    """Simulate GBM paths. Returns array of shape (n_paths, n_days + 1)."""
     rng = np.random.default_rng(seed)
     dt = 1 / 252
     drift = (mu - 0.5 * sigma**2) * dt
@@ -40,7 +40,11 @@ def _simulate_gbm_paths(S0: float, mu: float, sigma: float,
     z = rng.standard_normal((n_paths, n_days))
     log_returns = drift + vol * z
     paths = S0 * np.exp(np.cumsum(log_returns, axis=1))
-    return np.column_stack([np.full(n_paths, S0), paths])
+    # Add initial price as first column
+    paths_with_initial = np.zeros((n_paths, n_days + 1))
+    paths_with_initial[:, 0] = S0
+    paths_with_initial[:, 1:] = paths
+    return paths_with_initial
 
 
 class RiskAnalysisAgent(BaseExpertAgent):
@@ -69,13 +73,14 @@ class RiskAnalysisAgent(BaseExpertAgent):
                 n_paths=n_paths
             )
             median_path = np.median(paths, axis=0)
-            equity_curve = [round(float(spec.initial_capital * (v / median_path[0])), 2) for v in median_path[:n_days]]
-            dates = [str(d.date()) for d in df.index[:n_days]]
+            # Use only the trading days (exclude initial price day for equity curve)
+            equity_curve = [round(float(spec.initial_capital * (v / median_path[0])), 2) for v in median_path[1:]]
+            dates = [str(d.date()) for d in df.index]
 
             # Sample paths for UI visualization
             # Take 50 paths or total available, evenly spaced
             stride = max(1, n_paths // 50)
-            sampled_paths = paths[::stride, :n_days].tolist()
+            sampled_paths = paths[::stride, :].tolist()
 
             # Compute VaR/CVaR as extras
             final_values = paths[:, -1]

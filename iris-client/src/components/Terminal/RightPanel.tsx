@@ -21,33 +21,9 @@ const tabs = [
   { id: 'iris', label: 'IRIS' }
 ]
 
-// Sample metrics data
-const defaultMetrics: PerformanceMetrics = {
-  sharpe: 1.84,
-  sortino: 2.31,
-  calmar: 1.48,
-  maxDrawdown: -12.3,
-  cagr: 18.2,
-  totalReturn: 91.4,
-  winRate: 61.4,
-  volatility: 14.2,
-  var: -1.84,
-  cvar: -2.91
-}
-
-// Sample trades data
-const defaultTrades: Trade[] = [
-  { date: '2019-01', side: 'BUY', price: 150.23, size: 100 },
-  { date: '2019-02', side: 'SELL', price: 158.91, size: 100, pnl: 5.8 },
-  { date: '2019-03', side: 'BUY', price: 162.45, size: 150 },
-  { date: '2019-04', side: 'SELL', price: 171.12, size: 150, pnl: 5.3 },
-  { date: '2019-05', side: 'BUY', price: 168.90, size: 120 },
-  { date: '2019-06', side: 'SELL', price: 175.34, size: 120, pnl: 3.8 },
-]
-
 export function RightPanel({ 
-  metrics = defaultMetrics, 
-  trades = defaultTrades,
+  metrics, 
+  trades,
   onDeployStrategy,
   isLoading = false
 }: RightPanelProps) {
@@ -88,42 +64,42 @@ export function RightPanel({
         <div className="grid grid-cols-2 gap-1.5 mb-3">
           <div className="bg-elevated border border-border rounded-sm p-2">
             <div className="text-[8px] text-text3 tracking-wide mb-0.5">SHARPE</div>
-            <div className="text-[16px] font-bold leading-none text-green">{metrics.sharpe.toFixed(2)}</div>
+            <div className="text-[16px] font-bold leading-none text-green">{metrics?.sharpe?.toFixed(2) || '0.00'}</div>
             <div className="text-[8px] text-amber mt-0.5">−0.37 vs expert</div>
           </div>
           <div className="bg-elevated border border-border rounded-sm p-2">
             <div className="text-[8px] text-text3 tracking-wide mb-0.5">MAX DD</div>
-            <div className="text-[16px] font-bold leading-none text-red">{formatPercent(metrics.maxDrawdown)}</div>
+            <div className="text-[16px] font-bold leading-none text-red">{formatPercent(metrics?.maxDrawdown || 0)}</div>
             <div className="text-[8px] text-red mt-0.5">−4.2pp vs expert</div>
           </div>
           <div className="bg-elevated border border-border rounded-sm p-2">
             <div className="text-[8px] text-text3 tracking-wide mb-0.5">WIN RATE</div>
-            <div className="text-[16px] font-bold leading-none text-green">{metrics.winRate.toFixed(1)}%</div>
+            <div className="text-[16px] font-bold leading-none text-green">{metrics?.winRate?.toFixed(1) || '0.0'}%</div>
             <div className="text-[8px] text-amber mt-0.5">47 trades</div>
           </div>
           <div className="bg-elevated border border-border rounded-sm p-2">
             <div className="text-[8px] text-text3 tracking-wide mb-0.5">CAGR</div>
-            <div className="text-[16px] font-bold leading-none text-green">{formatPercent(metrics.cagr)}</div>
+            <div className="text-[16px] font-bold leading-none text-green">{formatPercent(metrics?.cagr || 0)}</div>
             <div className="text-[8px] text-amber mt-0.5">vs 11.4% SPY</div>
           </div>
           <div className="bg-elevated border border-border rounded-sm p-2">
             <div className="text-[8px] text-text3 tracking-wide mb-0.5">SORTINO</div>
-            <div className="text-[16px] font-bold leading-none text-green">{metrics.sortino.toFixed(2)}</div>
+            <div className="text-[16px] font-bold leading-none text-green">{metrics?.sortino?.toFixed(2) || '0.00'}</div>
             <div className="text-[8px] text-green mt-0.5">+0.11 vs SPY</div>
           </div>
           <div className="bg-elevated border border-border rounded-sm p-2">
             <div className="text-[8px] text-text3 tracking-wide mb-0.5">CALMAR</div>
-            <div className="text-[16px] font-bold leading-none text-green">{metrics.calmar.toFixed(2)}</div>
+            <div className="text-[16px] font-bold leading-none text-green">{metrics?.calmar?.toFixed(2) || '0.00'}</div>
             <div className="text-[8px] text-amber mt-0.5">good</div>
           </div>
           <div className="bg-elevated border border-border rounded-sm p-2">
             <div className="text-[8px] text-text3 tracking-wide mb-0.5">TOTAL RETURN</div>
-            <div className="text-[16px] font-bold leading-none text-green">{formatPercent(metrics.totalReturn)}</div>
+            <div className="text-[16px] font-bold leading-none text-green">{formatPercent(metrics?.totalReturn || 0)}</div>
             <div className="text-[8px] text-text mt-0.5">$91,400</div>
           </div>
           <div className="bg-elevated border border-border rounded-sm p-2">
             <div className="text-[8px] text-text3 tracking-wide mb-0.5">VOLATILITY</div>
-            <div className="text-[16px] font-bold leading-none text-amber">{formatPercent(metrics.volatility)}</div>
+            <div className="text-[16px] font-bold leading-none text-amber">{formatPercent(metrics?.volatility || 0)}</div>
             <div className="text-[8px] text-text3 mt-0.5">annualised</div>
           </div>
         </div>
@@ -195,7 +171,7 @@ export function RightPanel({
   const renderTradesTab = () => (
     <div>
       <div className="text-[8px] tracking-wider text-text3 mb-2 pb-1 border-b border-border">
-        TRADE LOG · {trades.length} TRADES
+        TRADE LOG · {trades?.length || 0} TRADES
       </div>
       <div className="space-y-0.5">
         <div className="grid grid-cols-[60px_40px_70px_60px_50px] gap-1 p-1 text-[8px] text-text3 tracking-wide border-b border-border">
@@ -206,7 +182,7 @@ export function RightPanel({
           <div>P&L</div>
         </div>
         <div className="space-y-0.5 max-h-[400px] overflow-y-auto">
-          {trades.map((trade, index) => (
+          {(trades || []).map((trade, index) => (
             <div key={index} className="grid grid-cols-[60px_40px_70px_60px_50px] gap-1 p-1 text-[8px] border-b border-border/50 hover:bg-elevated transition-colors">
               <div>{trade.date}</div>
               <div className={getSideColor(trade.side)}>{trade.side}</div>

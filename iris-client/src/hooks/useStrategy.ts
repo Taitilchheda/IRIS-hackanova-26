@@ -19,8 +19,8 @@ export function useStrategy() {
         start_date: strategy.startDate,
         end_date: strategy.endDate,
         initial_capital: strategy.capital,
-        commission_bps: strategy.commission * 100, // Convert to basis points
-        slippage_bps: strategy.slippage * 100, // Convert to basis points
+        commission_bps: strategy.commission, // Already in basis points
+        slippage_bps: strategy.slippage, // Already in basis points
         max_position_pct: strategy.maxPosition,
         monte_carlo_paths: strategy.monteCarloPaths || 1000,
         expert_type: strategy.expertType || null
