@@ -1,9 +1,7 @@
 import { Settings as SettingsIcon, Save } from 'lucide-react'
 import { useIRISStore, EXPERT_OPTIONS } from '../store/irisStore'
 import type { ExpertType } from '../store/irisStore'
-import { useState, useEffect } from 'react'
-import { useAuthStore } from '../store/authStore'
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import QuantWorkspace from '../components/QuantWorkspace'
 
 export default function Settings() {
@@ -13,12 +11,7 @@ export default function Settings() {
     backendAlive,
   } = useIRISStore()
 
-  const { token, hydrate } = useAuthStore()
-  const navigate = useNavigate()
   const [saved, setSaved] = useState(false)
-
-  useEffect(() => { hydrate() }, [hydrate])
-  useEffect(() => { if (!token) navigate('/login') }, [token, navigate])
 
   const handleSave = () => {
     setSaved(true)

@@ -7,17 +7,11 @@ import HistoryDetail from './pages/HistoryDetail'
 import Settings from './pages/Settings'
 import AutomateModal from './components/AutomateModal'
 import { useIRISStore } from './store/irisStore'
-import { useAuthStore } from './store/authStore'
 
 
 export default function App() {
   const checkHealth = useIRISStore((s) => s.checkHealth)
   const automateModalOpen = useIRISStore((s) => s.automateModalOpen)
-  const { hydrate } = useAuthStore()
-
-  useEffect(() => {
-    hydrate()
-  }, [hydrate])
 
   useEffect(() => {
     checkHealth()

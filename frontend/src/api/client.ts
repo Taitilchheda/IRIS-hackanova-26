@@ -99,10 +99,6 @@ export interface AutomateResult {
   error?: string
 }
 
-export interface AuthUser {
-  email: string
-}
-
 
 
 /* ── API Functions ───────────────────────────────────────────────── */
@@ -147,37 +143,5 @@ export async function automateStrategy(
 /** Health check */
 export async function healthCheck(): Promise<{ status: string; version: string }> {
   const { data } = await axios.get(`${API_BASE}/health`, { timeout: 5000 })
-  return data
-}
-
-/** Auth */
-export async function login(email: string, password: string): Promise<string> {
-  const params = new URLSearchParams()
-  params.append('username', email)
-  params.append('password', password)
-  const { data } = await axios.post(
-    `${API_BASE}/auth/login`,
-    params,
-    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-  )
-  return data.access_token as string
-}
-
-export async function register(email: string, password: string): Promise<string> {
-  const params = new URLSearchParams()
-  params.append('email', email)
-  params.append('password', password)
-  const { data } = await axios.post(
-    `${API_BASE}/auth/register`,
-    params,
-    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-  )
-  return data.access_token as string
-}
-
-export async function me(token?: string): Promise<AuthUser> {
-  const { data } = await axios.get(`${API_BASE}/auth/me`, {
-    headers: { Authorization: `Bearer ${token || localStorage.getItem('iris_token') || ''}` },
-  })
   return data
 }

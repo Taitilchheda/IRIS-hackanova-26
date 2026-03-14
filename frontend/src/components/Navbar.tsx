@@ -1,11 +1,9 @@
 import { NavLink } from 'react-router-dom'
 import { Activity, History, Settings, Cpu } from 'lucide-react'
 import { useIRISStore } from '../store/irisStore'
-import { useAuthStore } from '../store/authStore'
 
 export default function Navbar() {
   const backendAlive = useIRISStore((s) => s.backendAlive)
-  const { user } = useAuthStore()
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `nav-link ${isActive ? 'active' : ''}`
@@ -36,7 +34,7 @@ export default function Navbar() {
           </NavLink>
         </div>
 
-        {/* Live indicator + user */}
+        {/* Live indicator */}
         <div className="navbar-status">
           <span
             className="status-dot"
@@ -45,9 +43,6 @@ export default function Navbar() {
           <span className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
             {backendAlive ? 'Live' : 'Offline'}
           </span>
-          <div className="iris-btn iris-btn-secondary" style={{ padding: '0.35rem 0.75rem', cursor: 'default' }}>
-            <span className="font-mono" style={{ fontSize: '0.75rem' }}>{user?.email}</span>
-          </div>
         </div>
       </div>
 

@@ -2,11 +2,10 @@
 """
 FastAPI routes: POST /run, POST /parse, POST /automate
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 from app.nlp.schema import RunRequest
 from app.agents.manager import ManagerAgent
 from app.utils.logger import get_logger
-from app.api.auth import get_current_user
 
 log = get_logger(__name__)
 router = APIRouter()
@@ -20,7 +19,7 @@ def _persist_tearsheet(ts_dict: dict):
 
 
 @router.post("/run", response_model=None)
-async def run_strategy(req: RunRequest, current_user = Depends(get_current_user)):
+async def run_strategy(req: RunRequest):
     try:
         ts = _manager.run(
             prompt=req.prompt,
@@ -59,7 +58,7 @@ async def parse_strategy(req: RunRequest):
 
 
 @router.get("/tearsheet/{run_id}")
-async def get_tearsheet(run_id: str, current_user = Depends(get_current_user)):
+async def get_tearsheet(run_id: str):
     ts = _tearsheets.get(run_id)
     if not ts:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
@@ -67,7 +66,7 @@ async def get_tearsheet(run_id: str, current_user = Depends(get_current_user)):
 
 
 @router.get("/history")
-async def get_history(current_user = Depends(get_current_user)):
+async def get_history():
     return [
         {"run_id": rid, "asset": v["strategy_spec"]["asset"],
          "start_date": v["strategy_spec"]["start_date"],
@@ -81,7 +80,7 @@ async def get_history(current_user = Depends(get_current_user)):
 
 
 @router.post("/automate/{run_id}")
-async def automate(run_id: str, use_expert: bool = False, current_user = Depends(get_current_user)):
+async def automate(run_id: str, use_expert: bool = False):
     ts_data = _tearsheets.get(run_id)
     if not ts_data:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")

@@ -8,23 +8,18 @@ import ComparisonTable from '../components/Tearsheet/ComparisonTable'
 import MetricsGrid from '../components/Tearsheet/MetricsGrid'
 import IrisSaysPanel from '../components/Tearsheet/IrisSaysPanel'
 import { useIRISStore } from '../store/irisStore'
-import { useAuthStore } from '../store/authStore'
 import QuantWorkspace from '../components/QuantWorkspace'
 
 export default function HistoryDetail() {
   const { runId } = useParams<{ runId: string }>()
   const navigate = useNavigate()
   const setTearsheet = useIRISStore((s) => s.setTearsheet)
-  const { token, hydrate } = useAuthStore()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [tearsheet, setLocalTearsheet] = useState<Tearsheet | null>(null)
 
-  useEffect(() => { hydrate() }, [hydrate])
-  useEffect(() => { if (!token) navigate('/login') }, [token, navigate])
-
   useEffect(() => {
-    if (!runId || !token) return
+    if (!runId) return
     setLoading(true)
     setError(null)
     getTearsheet(runId)

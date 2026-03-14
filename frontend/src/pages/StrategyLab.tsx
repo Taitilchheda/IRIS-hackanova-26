@@ -1,19 +1,11 @@
-import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useIRISStore } from '../store/irisStore'
 import TearsheetLayout from '../components/Tearsheet'
 import { AlertCircle, RotateCcw } from 'lucide-react'
-import { useAuthStore } from '../store/authStore'
 import QuantWorkspace from '../components/QuantWorkspace'
 import AgentPipeline from '../components/AgentPipeline'
 
 export default function StrategyLab() {
   const { appPhase, error, resetPipeline } = useIRISStore()
-  const { token, hydrate } = useAuthStore()
-  const navigate = useNavigate()
-
-  useEffect(() => { hydrate() }, [hydrate])
-  useEffect(() => { if (!token) navigate('/login') }, [token, navigate])
 
   return (
     <QuantWorkspace>
